@@ -60,7 +60,7 @@ export function resolveName() {
   const fromUrl = params.get('name');
   if (fromUrl) return fromUrl.slice(0, 20);
   try {
-    const saved = localStorage.getItem('ns_name') || localStorage.getItem('cod_name');
+    const saved = localStorage.getItem('ns_name');
     if (saved) return saved;
   } catch {}
   const name = `${CALLSIGNS[(Math.random() * CALLSIGNS.length) | 0]}-${(Math.random() * 90 + 10) | 0}`;
@@ -70,7 +70,6 @@ export function resolveName() {
 export function saveName(name) {
   try {
     localStorage.setItem('ns_name', name);
-    localStorage.setItem('cod_name', name);
   } catch {}
 }
 

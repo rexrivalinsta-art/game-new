@@ -750,12 +750,12 @@ export class MatchStartUI {
     this.stripNet = q('[data-strip-net]');
     this.stripPrimary = q('[data-strip-primary]');
 
-    // The lobby has exactly one visual treatment: the WORKMELT brand system as
-    // documented in DESIGN.md. A browser still carrying a preference from the
-    // retired theme labs or layout explorations has it cleared, not honoured.
+    // The lobby has exactly one visual treatment: the NEURAL STRIKE brand
+    // system. A browser still carrying a preference from a retired theme lab or
+    // layout exploration has it cleared, not honoured.
     try {
-      localStorage.removeItem('workmelt-lobby-style');
-      localStorage.removeItem('workmelt-map-layout');
+      localStorage.removeItem('ns-lobby-style');
+      localStorage.removeItem('ns-map-layout');
     } catch {}
 
     /* The hero artwork is a probe: the img element asks for the file and the

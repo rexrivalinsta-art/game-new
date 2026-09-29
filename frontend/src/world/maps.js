@@ -193,7 +193,7 @@ export function mapRegistry() {
 export const DEFAULT_MAP_ID = 'ironhold';
 
 /** Where the chosen map is remembered between sessions. */
-const STORAGE_KEY = 'workmelt.map';
+const STORAGE_KEY = 'ns.map';
 
 export function getMap(id) {
   return MAPS.find((m) => m.id === id) ?? null;
