@@ -1,3 +1,5 @@
+import { BRAND as NS_BRAND } from '../config/branding.js';
+
 import * as THREE from 'three';
 import { installStyles, removeStyles } from './style.js';
 import { el, clamp, clamp01, damp, setStyle } from './util.js';
@@ -157,7 +159,7 @@ export class UiSystem {
         '<path d="M2.5 9.5a9.5 9.5 0 013.2-5.2M21.5 14.5a9.5 9.5 0 01-3.2 5.2"/>' +
         '<path d="M2.5 5.5v4h4M21.5 18.5v-4h-4"/></svg>' +
         '<span class="t">Rotate your device</span>' +
-        '<span class="s">WORKMELT plays in landscape — two thumbs, one arena.</span>';
+        `<span class="s">${NS_BRAND.GAME_NAME} plays in landscape — two thumbs, one arena.</span>`;
     }
 
     this.health.onBeat = (i) => this.sfx('heartbeat', 0.35 + i * 0.5);

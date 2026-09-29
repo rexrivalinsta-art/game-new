@@ -7,7 +7,7 @@
  * into them:
  *
  *   PLAY        → username + Quick Play / Create Room / Join Room, then reveals
- *                 the existing Workmelt lobby (room + map + ready + countdown).
+ *                 the game lobby (room + map + ready + countdown).
  *   LOADOUT     → the real weapon catalogue (read-only preview).
  *   PROFILE     → local career stats (CareerStats).
  *   LEADERBOARD → the live room scoreboard from the net system (session data).

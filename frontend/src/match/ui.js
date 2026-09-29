@@ -527,8 +527,8 @@ body.wm-touch .wm-lobby {
 /** Sizes offered for the bot garrison; `squads` × `perSquad` hostiles. */
 export const BOT_PRESETS = [
   { key: 'off', label: 'No bots', squads: 0, perSquad: 0, note: 'Players only — nobody but whoever joins your room.' },
-  { key: 'light', label: 'Light', squads: 1, perSquad: 3, note: 'One patrol of 3. A quiet floor with something to shoot.' },
-  { key: 'standard', label: 'Standard', squads: 2, perSquad: 3, note: 'Two squads of 3 on patrol routes — the default garrison.' },
+  { key: 'light', label: 'Light', squads: 1, perSquad: 3, note: 'One patrol of 3. A quiet map with something to shoot.' },
+  { key: 'standard', label: 'Standard', squads: 2, perSquad: 3, note: 'Two squads of 3 on patrol routes — the standard enemy force.' },
   { key: 'heavy', label: 'Heavy', squads: 3, perSquad: 4, note: 'Three squads of 4. Contact almost everywhere.' },
 ];
 
@@ -644,8 +644,8 @@ export class MatchStartUI {
 
           <div class="setup">
             <div class="opts">
-              <span class="lbl">Garrison</span>
-              <div class="chips" data-bots role="group" aria-label="Garrison size"></div>
+              <span class="lbl">Bots</span>
+              <div class="chips" data-bots role="group" aria-label="Bot count"></div>
               <p class="note" data-bot-note></p>
             </div>
             <div class="callsign">
@@ -695,7 +695,7 @@ export class MatchStartUI {
         <div>
           <div class="n" data-count-n>3</div>
           <div class="lbl2" data-count-lbl>Match starting</div>
-          <div class="sub" data-count-sub>Deploying to the floor</div>
+          <div class="sub" data-count-sub>Deploying to the arena</div>
         </div>
       </div>
 
@@ -1099,7 +1099,7 @@ export class MatchStartUI {
         ? `That room is full (${m.full} players). Ask for a new link — you can still play right now.`
         : m.everConnected
           ? 'Offline — reconnecting to the relay.'
-          : 'Waiting on the relay. You can play the garrison right now — co-workers can still join later.';
+          : 'Waiting for the relay. You can start a match against bots right now — other players can still join later.';
     } else if (!others.length) {
       this._mode = m.ready ? 'unready' : 'solo';
       this._altMode = m.ready ? 'solo' : null;
@@ -1210,7 +1210,7 @@ export class MatchStartUI {
     if (on) this.cereEl.classList.add('hide');
   }
 
-  setCountdown(n, label = 'Match starting', sub = 'Deploying to the floor') {
+  setCountdown(n, label = 'Match starting', sub = 'Deploying to the arena') {
     const text = n > 0 ? String(n) : 'GO';
     if (this.countN.textContent !== text) {
       this.countN.textContent = text;

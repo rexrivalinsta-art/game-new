@@ -89,7 +89,7 @@ export class MatchSystem {
     this.mode = null;
     this.bots = opts.bots ?? DEFAULT_BOTS;
     /** Copy for the countdown screen — a pull-in from a warm-up says so. */
-    this._countCopy = { label: 'Match starting', sub: 'Deploying to the floor' };
+    this._countCopy = { label: 'Match starting', sub: 'Deploying to the arena' };
     this._countdownEnd = 0;
     this._lastTick = -1;
     this._off = [];
@@ -368,7 +368,7 @@ export class MatchSystem {
     this.state = 'countdown';
     this._countCopy = pulled
       ? { label: 'Match starting', sub: 'Your room is playing — leaving the bots behind' }
-      : { label: 'Match starting', sub: 'Deploying to the floor' };
+      : { label: 'Match starting', sub: 'Deploying to the arena' };
     // Wall clock, not frame time: both clients were handed the same duration by
     // the relay, and a dropped frame must not stretch one player's countdown.
     this._countdownEnd = performance.now() + Math.max(400, ms || 0);
@@ -624,7 +624,7 @@ export class MatchSystem {
           : `Full time — ${this._fmtClock(t.ms)} played`,
       rows: [
         { name: myName, kills: t.kills, deaths: t.deaths, colour: myColour, me: true, win: winner === 'you' },
-        { name: 'Garrison', kills: t.deaths, deaths: t.kills, colour: null, me: false, win: winner === 'garrison' },
+        { name: 'Bots', kills: t.deaths, deaths: t.kills, colour: null, me: false, win: winner === 'garrison' },
       ].sort((a, b) => b.kills - a.kills),
     });
   }
