@@ -1,6 +1,6 @@
 /**
  * ===========================================================================
- * WORKMELT brand tokens — the one source of truth for every menu surface
+ * NEURAL STRIKE brand tokens — the one source of truth for every menu surface
  * ===========================================================================
  *
  * Implements `DESIGN.md` (v0.3 — Console Black). Three surfaces consume this

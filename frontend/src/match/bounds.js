@@ -1,7 +1,7 @@
 /**
  * The bounded-match contract, client side.
  *
- * Every WORKMELT match is a bounded free-for-all: first to `SCORE_LIMIT` kills
+ * Every NEURAL STRIKE match is a bounded free-for-all: first to `SCORE_LIMIT` kills
  * wins outright, and `MATCH_MS` is the time cap — when it expires the leader
  * wins on time. The defaults are sized for a quick match during a work break:
  * fifteen kills is a few minutes of honest shooting in a small room, and five

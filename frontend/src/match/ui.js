@@ -1,6 +1,6 @@
 /**
  * ===========================================================================
- * The lobby — the screen WORKMELT opens on
+ * The lobby — the screen NEURAL STRIKE opens on
  * ===========================================================================
  *
  * Styled from `DESIGN.md` (v0.3 — Console Black) through the tokens in

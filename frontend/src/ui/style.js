@@ -694,7 +694,7 @@ const CSS = `
 }
 
 /* ================================================================== menu */
-/* The pause / settings menu is NOT in-world chrome — it is a WORKMELT product
+/* The pause / settings menu is NOT in-world chrome — it is a NEURAL STRIKE product
    surface, so it drops the HUD's outlined amber treatment entirely and uses the
    brand tokens from src/ui/brand.js: Gunmetal panel at 88% over a Dark Slate
    scrim, 1px Hairline rules, 8px radius, Bebas for display and Inter for every
@@ -1006,7 +1006,7 @@ const CSS = `
 }
 
 /* ============================================================ rotate prompt
-   A WORKMELT product surface (brand tokens, not HUD ink): an FPS with a
+   A NEURAL STRIKE product surface (brand tokens, not HUD ink): an FPS with a
    thumbstick needs both hands, and both hands need landscape. */
 .wm-rotate { display:none; }
 @media (orientation: portrait) {
