@@ -1,0 +1,430 @@
+/**
+ * Input aggregation: keyboard, mouse (pointer-locked), and gamepad, exposed as
+ * a stable per-frame snapshot so gameplay never touches raw DOM events.
+ *
+ * Edge queries (`pressed`, `released`) are valid only during the frame in which
+ * the transition happened — read them in update(), not fixedUpdate().
+ */
+
+/**
+ * True when this session should run the touch control scheme. Coarse-pointer
+ * capability alone is not enough (a touchscreen laptop still has a mouse), so
+ * both signals are required; `?touch=1` / `?touch=0` force it either way for
+ * testing on the wrong hardware.
+ */
+export function detectTouchMode(params) {
+  try {
+    const p = params ?? new URLSearchParams(globalThis.location?.search ?? '');
+    const forced = p.get('touch');
+    if (forced === '1') return true;
+    if (forced === '0') return false;
+  } catch {
+    /* no URL in this environment — fall through to capability sniffing */
+  }
+  const coarse = globalThis.matchMedia?.('(pointer: coarse)')?.matches === true;
+  const touchable =
+    (globalThis.navigator?.maxTouchPoints ?? 0) > 0 || 'ontouchstart' in (globalThis.window ?? {});
+  return coarse && touchable;
+}
+
+/** Raw touch-look pixels -> radians, before `config.sensitivity` and the
+ *  player's touch multiplier. ~1.8x the mouse count rate: a full-width swipe
+ *  on a phone should turn roughly half a revolution. */
+export const TOUCH_LOOK_SCALE = 1.8;
+
+export const ACTIONS = {
+  forward: ['KeyW', 'ArrowUp'],
+  back: ['KeyS', 'ArrowDown'],
+  left: ['KeyA', 'ArrowLeft'],
+  right: ['KeyD', 'ArrowRight'],
+  jump: ['Space'],
+  crouch: ['ControlLeft', 'KeyC'],
+  prone: ['KeyZ'],
+  sprint: ['ShiftLeft'],
+  reload: ['KeyR'],
+  use: ['KeyF'],
+  melee: ['KeyV'],
+  leanLeft: ['KeyQ'],
+  leanRight: ['KeyE'],
+  swapWeapon: ['Digit1', 'Digit2'], // Tab is the multiplayer scoreboard
+  grenade: ['KeyG'],
+  tactical: ['KeyH'],
+  flashlight: ['KeyT'],
+  pause: ['Escape'],
+};
+
+export class Input {
+  constructor(canvas, config) {
+    this.canvas = canvas;
+    this.config = config;
+
+    this.down = new Set(); // codes currently held
+    this._pressed = new Set(); // went down this frame
+    this._released = new Set(); // went up this frame
+    this._pendingDown = new Set();
+    this._pendingUp = new Set();
+
+    /** Accumulated pointer delta for this frame, in radians after sensitivity. */
+    this.look = { x: 0, y: 0 };
+    this._rawLook = { x: 0, y: 0 };
+    this.wheel = 0;
+    this._pendingWheel = 0;
+
+    this.pointerLocked = false;
+    this.enabled = true;
+    /** Set true by capture mode so scripted shots aren't fought by real input. */
+    this.frozen = false;
+
+    this.gamepadIndex = null;
+    this.stick = { moveX: 0, moveY: 0, lookX: 0, lookY: 0 };
+
+    /**
+     * Touch control channel, fed by the on-screen overlay (src/ui/touch.js).
+     * `moveX`/`moveY` are already in the game convention (+y forward), clamped
+     * to the unit disc, and PERSIST between frames — a thumb resting on the
+     * stick is a held input, unlike the gamepad axes which are re-polled.
+     * Look arrives as raw pixels via `touchLook()` and is folded into `look`
+     * in `beginFrame`, exactly like the pointer path.
+     */
+    this.touch = { active: !!config.touchMode, moveX: 0, moveY: 0 };
+    this._rawTouchLook = { x: 0, y: 0 };
+
+    /** Resolved once per frame from the ADS key latch + `config.adsMode`. */
+    this._ads = false;
+    this._adsLatched = false;
+
+    this._bound = {
+      keydown: this._onKeyDown.bind(this),
+      keyup: this._onKeyUp.bind(this),
+      mousedown: this._onMouseDown.bind(this),
+      mouseup: this._onMouseUp.bind(this),
+      mousemove: this._onMouseMove.bind(this),
+      wheel: this._onWheel.bind(this),
+      lockchange: this._onLockChange.bind(this),
+      blur: this._onBlur.bind(this),
+      contextmenu: (e) => e.preventDefault(),
+    };
+  }
+
+  attach() {
+    addEventListener('keydown', this._bound.keydown);
+    addEventListener('keyup', this._bound.keyup);
+    addEventListener('mousedown', this._bound.mousedown);
+    addEventListener('mouseup', this._bound.mouseup);
+    addEventListener('mousemove', this._bound.mousemove);
+    addEventListener('wheel', this._bound.wheel, { passive: true });
+    addEventListener('blur', this._bound.blur);
+    document.addEventListener('pointerlockchange', this._bound.lockchange);
+    this.canvas.addEventListener('contextmenu', this._bound.contextmenu);
+  }
+
+  detach() {
+    removeEventListener('keydown', this._bound.keydown);
+    removeEventListener('keyup', this._bound.keyup);
+    removeEventListener('mousedown', this._bound.mousedown);
+    removeEventListener('mouseup', this._bound.mouseup);
+    removeEventListener('mousemove', this._bound.mousemove);
+    removeEventListener('wheel', this._bound.wheel);
+    removeEventListener('blur', this._bound.blur);
+    document.removeEventListener('pointerlockchange', this._bound.lockchange);
+    this.canvas.removeEventListener('contextmenu', this._bound.contextmenu);
+    document.body?.classList.remove('wm-pointer-locked');
+  }
+
+  requestPointerLock() {
+    // Touch sessions never lock the pointer: there is no pointer to lose, and
+    // a granted lock on a hybrid device would hide the cursor the player is
+    // not using while the lost-lock watchdog fights the pause menu over it.
+    if (this.config.touchMode) return;
+    // Chrome returns a promise that rejects if the document is not eligible
+    // (headless capture, an iframe, a lock request too soon after an exit).
+    // An unhandled rejection there shows up as a page error in the harness, so
+    // swallow it: failing to lock is not a game error.
+    try {
+      const p = this.canvas.requestPointerLock?.();
+      if (p && typeof p.catch === 'function') p.catch(() => {});
+    } catch {
+      /* not eligible — keep running unlocked */
+    }
+  }
+
+  _onKeyDown(e) {
+    if (!this.enabled) return;
+    if (e.repeat) return;
+    // Let devtools/refresh through; swallow everything else the game binds.
+    if (!e.metaKey && !e.ctrlKey) e.preventDefault();
+    this._pendingDown.add(e.code);
+  }
+
+  _onKeyUp(e) {
+    if (!this.enabled) return;
+    this._pendingUp.add(e.code);
+  }
+
+  _onMouseDown(e) {
+    if (!this.enabled) return;
+    if (!this.pointerLocked && e.button === 0) this.requestPointerLock();
+    this._pendingDown.add(`Mouse${e.button}`);
+  }
+
+  _onMouseUp(e) {
+    if (!this.enabled) return;
+    this._pendingUp.add(`Mouse${e.button}`);
+  }
+
+  _onMouseMove(e) {
+    if (!this.enabled || !this.pointerLocked || this.frozen) return;
+    // movementX/Y is already relative and unaffected by cursor clamping.
+    this._rawLook.x += e.movementX ?? 0;
+    this._rawLook.y += e.movementY ?? 0;
+  }
+
+  _onWheel(e) {
+    if (!this.enabled) return;
+    this._pendingWheel += Math.sign(e.deltaY);
+  }
+
+  _onLockChange() {
+    this.pointerLocked = document.pointerLockElement === this.canvas;
+    // The canvas hides the system cursor only while the game actually holds the
+    // pointer — see the cursor rule in index.html. This is the one place that
+    // knows, so it is the only place that writes the class.
+    document.body?.classList.toggle('wm-pointer-locked', this.pointerLocked);
+    if (!this.pointerLocked) this._onBlur();
+  }
+
+  /** Losing focus must release every held key, or the player runs forever. */
+  _onBlur() {
+    for (const code of this.down) this._pendingUp.add(code);
+    this._rawLook.x = 0;
+    this._rawLook.y = 0;
+    this._rawTouchLook.x = 0;
+    this._rawTouchLook.y = 0;
+    this.touch.moveX = 0;
+    this.touch.moveY = 0;
+    // A latch is not a held key, so the release sweep above misses it: coming
+    // back from a pause or an alt-tab should never leave the optic stuck up.
+    this.clearAdsToggle();
+  }
+
+  /* ==================================================================== */
+  /* touch — driven by the on-screen overlay in src/ui/touch.js           */
+  /* ==================================================================== */
+
+  /** Accumulate a raw look drag in CSS pixels; consumed next `beginFrame`. */
+  touchLook(dx, dy) {
+    if (!this.enabled || this.frozen) return;
+    this._rawTouchLook.x += dx;
+    this._rawTouchLook.y += dy;
+  }
+
+  /**
+   * Set the virtual stick's held vector, +y forward, clamped to the unit disc.
+   * Persists until the next call — a resting thumb is a held input.
+   */
+  setTouchMove(x, y) {
+    if (!this.enabled || this.frozen) {
+      x = 0;
+      y = 0;
+    }
+    const len = Math.hypot(x, y);
+    if (len > 1) {
+      x /= len;
+      y /= len;
+    }
+    this.touch.moveX = x;
+    this.touch.moveY = y;
+  }
+
+  /** Press a synthetic control as if its key/button went down. */
+  touchPress(code) {
+    if (!this.enabled) return;
+    this._pendingDown.add(code);
+  }
+
+  /** Release a synthetic control. Never gated on `enabled` — a button held
+   *  when the menu takes input away must still let go, or the player fires
+   *  into the pause screen when input comes back. */
+  touchRelease(code) {
+    this._pendingUp.add(code);
+  }
+
+  /** One tap = a same-frame press+release; edge queries still see it. */
+  touchTap(code) {
+    this.touchPress(code);
+    this.touchRelease(code);
+  }
+
+  /** Synthetic wheel step — how the swap button cycles weapons. */
+  touchWheel(steps = 1) {
+    if (!this.enabled) return;
+    this._pendingWheel += steps;
+  }
+
+  /**
+   * Flip the shared ADS latch — the touch ADS button is always a toggle, like
+   * the keyboard bind: nobody can hold an aim button and aim with the same
+   * thumb. Uses the same latch as `_resolveAds`, so sprint still breaks it and
+   * `clearAdsToggle` still clears it.
+   */
+  toggleAds() {
+    if (!this.enabled) return;
+    this._adsLatched = !this._adsLatched;
+    this._ads =
+      this._adsLatched || (this.config.adsMode !== 'toggle' && this.down.has('Mouse2'));
+  }
+
+  /** Drop a latched ADS. Safe to call every frame. */
+  clearAdsToggle() {
+    this._adsLatched = false;
+    // Recompute what `_resolveAds` would say with no latch: a right button that
+    // is genuinely still down keeps aiming in hold mode, the latch does not.
+    this._ads = this.config.adsMode === 'toggle' ? false : this.down.has('Mouse2');
+  }
+
+  beginFrame() {
+    this._pressed.clear();
+    this._released.clear();
+
+    for (const code of this._pendingDown) {
+      if (!this.down.has(code)) {
+        this.down.add(code);
+        this._pressed.add(code);
+      }
+    }
+    for (const code of this._pendingUp) {
+      if (this.down.delete(code)) this._released.add(code);
+    }
+    this._pendingDown.clear();
+    this._pendingUp.clear();
+
+    const s = this.config.sensitivity;
+    // Touch look shares the mouse pipeline (same sensitivity base, same invert)
+    // with its own scale + player multiplier, so `look` stays the one number
+    // every consumer reads.
+    const ts = s * TOUCH_LOOK_SCALE * (this.config.touchSensitivity ?? 1);
+    const rawX = this._rawLook.x * s + this._rawTouchLook.x * ts;
+    const rawY = this._rawLook.y * s + this._rawTouchLook.y * ts;
+    this.look.x = this.frozen ? 0 : rawX;
+    this.look.y = this.frozen ? 0 : rawY * (this.config.invertY ? -1 : 1);
+    this._rawLook.x = 0;
+    this._rawLook.y = 0;
+    this._rawTouchLook.x = 0;
+    this._rawTouchLook.y = 0;
+
+    this.wheel = this._pendingWheel;
+    this._pendingWheel = 0;
+
+    this._resolveAds();
+    this._pollGamepad();
+  }
+
+  /**
+   * Fold every ADS source — right mouse, the optional keyboard bind — into one
+   * boolean, so every consumer of `input.ads` (player, weapons, HUD) agrees on
+   * the answer.
+   *
+   * The two sources deliberately behave differently, because they are held
+   * differently. The keyboard bind is *always* a toggle: a tap latches, another
+   * tap releases. Holding a key down for the length of a scoped engagement
+   * fights everything else the left hand is doing (WASD, lean, crouch), and the
+   * bind exists precisely so a trackpad player never has to hold an aim button.
+   * `config.adsMode` therefore governs the mouse alone — 'hold' is the classic
+   * right-button behaviour and stays the default there.
+   *
+   * Both sources drive one shared latch, so either can drop what the other set;
+   * a mouse *hold* is simply added on top and never touches it.
+   */
+  _resolveAds() {
+    const key = this.config.adsKey;
+    const bound = typeof key === 'string' && key ? key : null;
+    const mouseToggle = this.config.adsMode === 'toggle';
+
+    const tapped =
+      (bound && this._pressed.has(bound)) || (mouseToggle && this._pressed.has('Mouse2'));
+    if (tapped) this._adsLatched = !this._adsLatched;
+    // Sprint is gated on not being scoped, so without this a latched player
+    // would press sprint and watch nothing happen. Same as a hold player
+    // letting go of the button to break into a run.
+    else if (this._adsLatched && this.actionPressed('sprint')) this._adsLatched = false;
+
+    this._ads = this._adsLatched || (!mouseToggle && this.down.has('Mouse2'));
+  }
+
+  endFrame() {}
+
+  _pollGamepad() {
+    const pads = navigator.getGamepads?.() ?? [];
+    const pad = pads[this.gamepadIndex ?? 0] ?? pads.find(Boolean);
+    if (!pad) {
+      this.stick.moveX = this.stick.moveY = this.stick.lookX = this.stick.lookY = 0;
+      return;
+    }
+    const dz = (v) => (Math.abs(v) < 0.16 ? 0 : (v - Math.sign(v) * 0.16) / 0.84);
+    this.stick.moveX = dz(pad.axes[0] ?? 0);
+    this.stick.moveY = dz(pad.axes[1] ?? 0);
+    // Cubic response curve on the look stick — fine aim near centre, fast flicks at the edge.
+    const curve = (v) => Math.sign(v) * Math.abs(v) ** 2.4;
+    this.stick.lookX = curve(dz(pad.axes[2] ?? 0));
+    this.stick.lookY = curve(dz(pad.axes[3] ?? 0));
+  }
+
+  /** True while any key bound to `action` is held. */
+  action(name) {
+    const codes = ACTIONS[name];
+    if (!codes) return false;
+    for (const c of codes) if (this.down.has(c)) return true;
+    return false;
+  }
+
+  actionPressed(name) {
+    const codes = ACTIONS[name];
+    if (!codes) return false;
+    for (const c of codes) if (this._pressed.has(c)) return true;
+    return false;
+  }
+
+  held(code) {
+    return this.down.has(code);
+  }
+
+  pressed(code) {
+    return this._pressed.has(code);
+  }
+
+  released(code) {
+    return this._released.has(code);
+  }
+
+  get fire() {
+    return this.down.has('Mouse0');
+  }
+
+  get firePressed() {
+    return this._pressed.has('Mouse0');
+  }
+
+  /** Resolved in `beginFrame` — see `_resolveAds`. */
+  get ads() {
+    return this._ads;
+  }
+
+  /** Normalised WASD + left-stick movement, clamped to the unit disc so
+   *  diagonals aren't faster than cardinals. */
+  moveVector(out = { x: 0, y: 0 }) {
+    let x = (this.action('right') ? 1 : 0) - (this.action('left') ? 1 : 0);
+    let y = (this.action('forward') ? 1 : 0) - (this.action('back') ? 1 : 0);
+    x += this.stick.moveX;
+    y -= this.stick.moveY;
+    x += this.touch.moveX;
+    y += this.touch.moveY;
+    const len = Math.hypot(x, y);
+    if (len > 1) {
+      x /= len;
+      y /= len;
+    }
+    out.x = x;
+    out.y = y;
+    return out;
+  }
+}

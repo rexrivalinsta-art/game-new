@@ -1,0 +1,376 @@
+# WORKMELT — engine contract
+
+**Every agent must read this before writing code. It is the only coordination mechanism.**
+
+Target: a browser FPS whose *visual and tactile quality* stands next to a modern
+Call of Duty. WebGL2 + Three.js r180. Textures, meshes and animation are
+generated procedurally at load time; audio may be procedural or sample-based.
+
+## Hard rules
+
+1. **If anyone else is writing to this working tree, you own your directory —
+   never edit outside it.** Another agent owns every other directory and your
+   edit will be clobbered or will break them. This is mutual exclusion, not
+   architecture: it binds only on *concurrent writers sharing one filesystem*.
+   In your own git worktree or checkout, edit whatever the change needs — git
+   resolves the overlap, and a change that legitimately spans two subsystems
+   should not have to be smuggled through a third. Rule 2 still applies either
+   way; it is the one that keeps the split honest.
+2. **Never import another subsystem's *stateful* module.** Get running systems
+   at runtime: `const fx = ctx.get('fx')`. This is what makes parallel work
+   safe — and, more durably, it is what lets one subsystem be refactored
+   without breaking the others.
+   **Exception: stateless leaf modules may be imported directly** — design
+   tokens, constant tables and pure helpers with no `init()`/`dispose()`, no
+   `ctx`, and no mutable module state. `src/ui/brand.js` is the canonical
+   example, and `DESIGN.md`'s One Token File Rule *requires* importing it from
+   `src/match/ui.js` and `src/net/ui.js`. A leaf has no lifecycle to coordinate,
+   so routing it through `ctx` buys nothing and costs a runtime lookup.
+3. **Nothing is fetched at runtime. Ever.** Every asset the game needs ships in
+   the bundle, so it runs fully offline and the current URL is always a valid
+   invite. That clause is not negotiable and no third party gets an exception
+   to it.
+   **New third-party code, models or packs are allowed, but they are a
+   decision, not a default.** `three` is the only runtime dependency today, and
+   the answer stays "no" until a candidate clears the bar in *"Taking on a
+   third-party dependency"* in `AGENTS.md` — offline, deterministic, measured,
+   licensed, and not a re-implementation of something `src/` already does well.
+   Prefer npm over a vendored copy; record the addition where that section
+   says. Dev dependencies are ordinary and need no ceremony.
+4. **No `Math.random()` in gameplay or visuals.** Use `ctx.rng` (see
+   `src/core/rng.js`) or a `ctx.rng.fork()` you keep. Capture reproducibility
+   depends on it.
+5. **Allocate nothing per-frame.** Preallocate vectors, matrices and arrays in
+   `init()` and reuse. A `new THREE.Vector3()` inside `update()` is a bug.
+6. **Dispose what you create.** Geometries, materials, textures and render
+   targets get freed in `dispose()`.
+7. `npm run build` must pass and `node tools/capture.mjs` must produce a frame
+   after your change. If you break the boot, nobody else can work.
+
+## Subsystem interface
+
+```js
+export class MySystem {
+  static id = 'mysystem';       // unique; how others reach you
+  static deps = ['render'];     // ids that must init before you
+
+  async init(ctx) {}            // build resources; may await
+  fixedUpdate(h, ctx) {}        // optional, 120 Hz, deterministic gameplay
+  update(dt, ctx) {}            // optional, once per frame
+  lateUpdate(dt, ctx) {}        // optional, after all update()
+  resize(w, h, ctx) {}          // optional; COALESCED, see below
+  dispose() {}                  // optional
+}
+```
+
+`ctx` provides: `scene`, `camera`, `viewScene`, `viewCamera`, `canvas`,
+`config`, `events`, `input`, `time`, `rng`, `get(id)`, `peek(id)`, `has(id)`.
+
+- `scene` / `camera` — the world. `viewScene` / `viewCamera` — the first-person
+  weapon, drawn separately so it can never clip through walls.
+- `time` — `{ elapsed, raw, dt, fixed, alpha, scale, frame }`. Use `alpha` to
+  interpolate rendered transforms between physics steps.
+- `config.q` — the active quality preset (see `src/core/config.js`). Respect
+  `q.taa`, `q.gtao`, `q.ssr`, `q.volumetrics`, `q.shadowMapSize`,
+  `q.particleBudget`, `q.decalBudget`. Never exceed a budget.
+
+  A preset field is also the **only** place the advanced graphics menu can
+  reach. `src/core/graphics.js` folds the player's per-option overrides into
+  `config.q` at boot, before `init()` runs, so a subsystem never learns that an
+  option exists — it reads the same preset object it always did. If your
+  subsystem re-derives a quality decision from `config.quality` (the tier NAME)
+  rather than from a `config.q` field, that decision cannot be exposed as a
+  setting: give it a preset field instead. `q.textureScale`,
+  `q.characterTextureSize`, `q.parallaxScale`, `q.detailScale`, `q.antialias`,
+  `q.viewSamples`, `q.contactShadows`, `q.dof` and `q.pixelRatioCap` all moved
+  out of such derivations for exactly this reason.
+
+## Ownership map
+
+| id | directory | owns |
+|---|---|---|
+| `render` | `src/render/` | WebGLRenderer, HDR pipeline, all post-processing, CSM shadows, the final composite |
+| `materials` | `src/materials/` | procedural PBR texture generation, the shared material library, triplanar/detail mapping |
+| `sky` | `src/sky/` | physical sky, sun/moon, time of day, IBL/env map generation, volumetric fog & light shafts |
+| `world` | `src/world/` | level geometry, the modular building kit, props, set dressing, static collision meshes, the spawn point set and the spawn director (`src/world/spawns.js`), the map list and the level rebuild (`src/world/maps.js`) |
+| `physics` | `src/physics/` | broadphase, raycasts, character controller collision, rigid bodies, ragdolls, penetration |
+| `player` | `src/player/` | movement state machine, camera feel, sprint/slide/mantle/lean, health |
+| `weapons` | `src/weapons/` | weapon meshes, viewmodel rig, ADS, recoil, sway, bob, reload & inspect animation, ballistics |
+| `fx` | `src/fx/` | GPU particles, muzzle flash, tracers, impacts, decals, smoke, blood, shells |
+| `ai` | `src/ai/` | enemy characters, navigation, perception, cover selection, combat behaviour |
+| `ui` | `src/ui/` | HUD, crosshair, hitmarkers, damage indicators, ammo, killfeed, menus |
+| `audio` | `src/audio/` | sampled + synthesized weapon/foley audio, spatialisation, reverb, occlusion, mix |
+| `quality` | `src/core/quality.js` | per-browser graphics calibration, FPS targeting, dynamic render scale, persisted graphics mode, and the advanced per-option graphics overrides (schema in `src/core/graphics.js`) |
+| `net` | `src/net/` | web multiplayer: room transport, remote player puppets, PvP hit settlement, invite bar / scoreboard, the match-start lobby on the wire |
+| `match` | `src/match/` | the Match Start view: map choice, bot-garrison choice, ready-up, countdown, and when the match goes live |
+
+Shared, owned by the lead (do not edit): `src/core/`, `src/main.js`,
+`src/boot.js`, `src/dev/`, `tools/`, `vite.config.js`.
+
+## Cross-subsystem events
+
+Emit and listen via `ctx.events`. Payloads are plain objects. The canonical set:
+
+| event | payload | emitted by |
+|---|---|---|
+| `weapon:fire` | `{ weapon, origin: Vector3, dir: Vector3, seed }` | weapons |
+| `weapon:reload` | `{ weapon, phase: 'start'\|'magout'\|'magin'\|'end', empty?, position? }` | weapons / ai |
+| ↳ | `position` is absent for the local player's own reload — that one is head-locked by definition. An emitter that is *not* the local player must supply it: `audio` falls back to a dry, unattenuated voice without one, which would put a bot's magazine clatter in your ears from across the map. | |
+| `weapon:shell` | `{ position, velocity }` | weapons / ai |
+| ↳ | `position` is required, not optional. Brass defaulted to the listener would sit in `attenuation()`'s flat near field and ring at full gain; `audio` drops a payload without one instead. | |
+| `weapon:melee` | `{ origin: Vector3, dir: Vector3, reach, damage }` — the local player's melee strike, fired on the swing's contact beat whether or not it connects. `weapons` settles bot hits itself (a `damage:dealt`, below); `net` listens to this and settles the PvP half against its puppet capsules, reading reach/damage arithmetic off `weapons.melee` so the two damage models agree. | weapons |
+| `bullet:impact` | `{ point, normal, surface, incident, damage, exit, actor, part, trace }` | physics |
+| ↳ | ONE ROUND EMITS SEVERAL. This is a SURFACE CROSSING, not a shot: a penetrating round reports an entry, an exit (`exit: true`) and another pair for each further layer, and a thick solid reports a spurious pair per layer because `penetration.js` gives up looking for the backface past `EXIT_PROBE` (1.6 m). `trace` is a monotonic id shared by every impact of one `fireBullet` call, and it is the only way a listener that means *per round* can get there — counting events gives ~3× on a solid. `actor` is set when the round landed on a body, which is not the world. `world`'s power grid filters on all three; see its `bullet:impact` handler. | |
+| `bullet:tracer` | `{ from, to, speed }` | weapons |
+| `damage:dealt` | `{ target, amount, headshot, killed, point, applied?, source? }` | ai / physics / weapons |
+| ↳ | `source` says who pulled the trigger: `'player'` (local player's rounds and melee) or `'ai'` (a bot's rounds), threaded through `physics.fireBullet({ source })`. Absent on payloads that predate it; a listener that keys behaviour off the shooter (the roo detonates only for `'player'`) must treat a missing source as "not the player". | |
+| ↳ | means *damage dealt **to** `target`*. `target` is the local player when an enemy round connects (`'player'`, the player system, or anything with `isPlayer === true`) — filter it out before drawing a hitmarker. Damage is applied by the target's own listener, never by the emitter as well. | |
+| ↳ | `applied: true` inverts that one rule: the emitter already applied the damage and the event is purely the report of it, for the hitmarker / announcer / killstreak listeners. `ai` emits these for player-sourced blast damage, which it applies itself inside its `explosion` listener; anything that applies damage off this event must skip a payload carrying the flag. | |
+| `damage:taken` | `{ amount, from: Vector3, health }` | player |
+| `actor:death` | `{ actor, point, impulse }` | ai |
+| `actor:footstep` | `{ actor, position, surface, speed, running, crouched, left }` — a bot or a remote player planted a foot | ai |
+| ↳ | NOT interchangeable with `player:footstep`, which means *the local player* stepped and is what `ai` perception and `fx` dust read. Only `audio` consumes this one; anything that would react to the player moving must keep listening to `player:footstep`. `ai` gates emission on range, so an inaudible body is silent, not merely quiet. | |
+| `roo:speak` | `{ position }` — Shivam's kangaroo muttered something at a player who wandered up to him. `audio` answers with `audio.critter('roo', position)`: a recorded line from the `roo` vox key, spatialised from his head. The line is NOT in the payload — the sample bank picks among the takes and refuses an immediate repeat, and a build with no encoded vox simply says nothing. | ai |
+| `player:spawn` | `{ position, yaw, zone }` — the local player entered the map at a spawn point chosen by `world.spawns` | player |
+| `player:land` | `{ velocity, surface }` | player |
+| ↳ | Local only, and `audio` plays it head-locked rather than at a position. A landing is always directly under your own head, so panning it encodes nothing and 1.6 m sits inside `attenuation()`'s flat near field — the 3D path gave it maximum gain. | |
+| `player:footstep` | `{ position, surface, running }` | player |
+| `player:state` | `{ stance, sprinting, sliding, ads }` | player |
+| `explosion` | `{ position, radius, damage }` | any |
+| `power:out` | `{ mapId, generator, seconds }` — a map's destructible power grid has been tripped: for `seconds`, the `power.mains` keys fall to `power.dim`, the `power.emergency` keys come UP from dark, and the sky stops down. Two circuits driven from one level so they cannot disagree. Only emitted by a map that declares a `power` block (Site Work). `world` owns the grid and the lights; this is purely the announcement, so `ui`, `audio` and `fx` can react without `world` knowing they exist. | world |
+| `power:restored` | `{ mapId }` — the outage ended and the mains are ramping back. Every generator is repaired with them, so the feature is repeatable rather than spent. | world |
+| `equipment:flash` | `{ position, radius, duration, source }` — a stun grenade detonated. Every listener folds in its own range / line-of-sight / facing falloff rather than trusting a pre-scaled intensity, so the player's whiteout (`ui`) and the bots' blindness (`ai`) stay consistent with each other. | weapons |
+| `resize` | `{ width, height }` | engine |
+| ↳ | COALESCED, not one per browser event. A window drag delivers a `resize` event every frame, and each one would rebuild the whole post chain (~160 MB of render targets per megapixel — ~1.3 GB per event at 4K). The engine waits for the window to hold still for 120 ms, timed off the frame clock, so a drag costs one reallocation. Meanwhile the backbuffer keeps its old size and the browser scales it into the new CSS box; because the camera aspect moves at the same moment the targets do, that is a uniform stretch rather than a geometry error. `engine.resize()` remains synchronous for `init()` and for harnesses that need the new size on the very next frame. | |
+| `render:contextlost` | `{ pixels, maxPixels, suggestedMaxPixels }` — the GPU dropped the WebGL context, most likely because it was asked for more pixels than it has. `render` stops drawing and states the facts; `quality` owns the recovery (persist a smaller budget, reload). | render |
+| `render:contextrestored` | `{ maxPixels }` | render |
+| `net:lobby` | `{ connected, everConnected, live, players, myId, ready }` | net |
+| `net:join` / `net:leave` | `{ id, name, colour, count }` — somebody else entered or left the room. `colour` is their livery as a CSS colour (null until the relay has assigned a slot) and `count` is how many are in the room afterwards, so a listener can raise the presence card (`src/ui/presence.js`) without reaching into `net`'s peer table | net |
+| `net:countdown` | `{ ms }` — the relay fired the pre-match start signal | net |
+| `net:kill` | `{ by, victim, headshot, mine }` — a relay-confirmed PvP kill | net |
+| `net:matchend` | `{ reason: 'score'\|'time', winner, limit, standings, mine }` — the relay ended the room's bounded match (first to the kill target, or the leader at full time). `winner` is a peer id or null for a draw; `standings` is the final sorted board. `match` renders the ceremony off this. | net |
+| `match:start` | `{ bots, squads, perSquad, mode, map }` — the match is live | match |
+| `match:countdown` | `{ seconds }` | match |
+| `match:end` | `{ reason: 'left'\|'pulled-in'\|'complete' }` — the match is over and the lobby owns the screen again. `complete` means it ran its bounds out (ceremony shown); the others are a player-initiated exit. | match |
+| `streak:kills` | `{ kills }` — the local player's kills-without-dying count moved (a kill, or back to 0 on death / match start). Bot kills are counted off `damage:dealt { killed }`, PvP kills off `net:kill { mine }`; nothing counts outside a live match. | match |
+| `streak:earned` | `{ reward: 'uav'\|'mortar', kills }` — a killstreak tier was reached and BANKED. Rewards survive the death that ends the streak and wait on the activation key (Digit5). | match |
+| `streak:designate` | `{ active, reward }` — the mortar's green laser designator went up (`active: true`; the reward stays banked while the player lases) or came down again (the lase committed, was cancelled with the key, or the player died / the match ended). `fx` draws the beam via `fx.designate()`, which `match` calls each frame while it is up. | match |
+| `streak:activated` | `{ reward, position? }` — a banked reward fired. `position` is the mortar's lased target point (the strike commits only after the designator has held a surface); a UAV also emits `streak:uav` in the same frame. | match |
+| `streak:uav` | `{ duration }` — a recon sweep is live for `duration` seconds. `ai` answers by publishing actor blips through `getHudActors()` for the window; outside one that list is empty and the minimap is dark. | match |
+| `world:rebuilt` | `{ mapId, map }` — the level was torn down and rebuilt on another map. Anything holding level-derived state (`ai`'s nav grid, the minimap bake) must redo it. Only ever fires before a match goes live. | world |
+
+If you need an event that is not listed, add a row here in the same commit.
+
+## Surface types
+
+Shared vocabulary for impact FX, decals, audio and footsteps. Physics tags every
+collider with one of: `concrete`, `metal`, `wood`, `dirt`, `sand`, `glass`,
+`water`, `foliage`, `fabric`, `flesh`, `rubber`, `plaster`.
+
+## Maps
+
+The level is one of the descriptors in `src/world/maps.js`, not a hard-coded
+build sequence. Five ship: `market` (the Middle-Eastern street), `rust` (a
+low-poly desert refinery), `wilmot` (a low-poly walled country estate), `loop`
+(a low-poly Chicago corner under the elevated tracks, at night) and `fishers`
+(a low-poly North Shore estate down one long pool axis). Which one boots
+is `?map=` > the player's last choice > `market`; a capture run ignores the
+stored choice so the pixel gate always frames the same level unless `?map=`
+says otherwise.
+
+```js
+const world = ctx.get('world');
+world.mapId                 // 'market' | 'rust' | 'wilmot' | 'loop' | 'fishers'
+                            // | 'nuketown' | 'bloodgulch' | 'dome' | 'shivam'
+                            // | 'sitework' — see the REGISTRY in
+                            // world/maps.js, which is also where a map is
+                            // enabled or parked
+world.power                 // PowerGrid | null — the destructible grid, for a
+                            // map whose descriptor carries a `power` block.
+                            // `.out`, `.level` (0..1 mains), `.remaining`,
+                            // `.standing`. Damage arrives on `bullet:impact`
+                            // and `explosion`; see src/world/power.js
+world.maps                  // [{ id, name, description, blurb, size }] for menus
+                            // — enabled maps only, in registry order
+await world.setMap('rust')  // tear the level down and build another. Emits
+                            // `world:rebuilt`. ONLY legal before a match is
+                            // live — `src/match` is the only caller.
+```
+
+Adding a map means adding a module that exports a descriptor and listing it in
+`MAPS`; no other subsystem changes. `node src/world/maps.selftest.mjs` builds
+every map headlessly and checks the descriptor contract.
+
+A descriptor may also carry an **`environment`** — `{ hour, weather,
+exposureBias }`, the sky that map is set under. `world` hands it to
+`sky.applyEnvironment()` on every build, before the pre-warm and the first
+frame, so a map's time of day is a property of the map and not of whoever
+loaded it. `exposureBias` is EV added to the metering compensation `sky`
+already publishes for the hour (positive is darker) — how far a night frame can
+be stopped down depends on how much light the level itself owns. A map without one plays under
+the sky's defaults, and switching to it *restores* them, so a night map can
+never leak its haze into the next level. `loop` is the one night map today
+(01:30, moonlit, city haze); everything on it that emits — the marquee, the
+lamps, the lit rooms, the stalled train — is dressed for that hour.
+
+## Spawning
+
+Nobody picks their own spawn point. `world` owns the point set and the scoring
+(`src/world/spawns.js`); everyone else asks:
+
+```js
+const world = ctx.get('world');
+world.selectSpawn({ team, actorId, killer, from })  // -> { position, yaw, zone }
+world.spawns.selectMany(n, { team })                // deploy spread; picks repel
+world.spawns.noteClaim(x, y, z)                     // a remote player is coming in here
+world.spawn(0)                                      // by index — dev harnesses only
+```
+
+If your subsystem controls bodies that can be spawned on, register a source in
+`init()` and drop it in `dispose()`. The director pulls it at the moment of a
+spawn, so it can never be stale:
+
+```js
+this._off = world.spawns.addSource((add) => {
+  for (const a of this.things) add(a.x, a.y, a.z, viewYaw, team, id, dead);
+});
+```
+
+`viewYaw` is the CAMERA convention (forward is `-sin yaw, -cos yaw`). The
+soldier rig faces +Z, so an `ai` agent's yaw is a half turn from it — add `π`.
+
+Points are validated against real collision at boot and any that a standing
+character does not fit in are dropped, so the count is a property of the built
+level, not of the table. `SPAWN_POINTS[0]` is frozen: it is the deterministic
+boot spawn every capture baseline is framed from.
+
+## Render integration
+
+`render` exposes these to other subsystems:
+
+```js
+const r = ctx.get('render');
+r.renderer            // THREE.WebGLRenderer — do not change its state outside a frame
+r.registerPass(pass)  // insert a custom post pass
+r.addLight(light)     // register a punctual light so it participates in culling/budgets
+r.requestEnvMap()     // PMREM env map currently in use
+r.screenSize          // { width, height } of the internal render target
+r.depthTexture        // linear depth, for soft particles / SSR
+r.velocityTexture     // motion vectors, for TAA / motion blur
+r.setRenderScale(n)   // resize targets within the active preset's scale range
+r.setRenderScaleLimits(min, max)  // widen that range (manual scale goes to 2x)
+r.setPixelRatioCap(n) // ceiling on devicePixelRatio for the backbuffer
+r.setPixelBudget(px)  // absolute ceiling on pixel AREA, whatever the window size
+r.budgetLimited       // true while that ceiling is binding
+r.contextLost         // true between webglcontextlost and recovery
+r.applySettings(patch?)           // push `r.settings` at the passes caching it
+r.setAmbientFill(k)   // scale every indirect term at once ("Shadow Lift")
+```
+
+The last four exist for the advanced graphics menu, which drives `r.settings`
+live. Anything else that writes `r.settings` directly must call
+`r.applySettings()` afterwards or the passes will not see it.
+
+### The resolution budget
+
+`renderScale` and `pixelRatioCap` are both ratios of the window, and a window
+has no upper bound — the same profile asks for 2.1 MP on a laptop and 33 MP on
+an 8K panel, against a render-target set that costs roughly **160 MB per
+megapixel** at `high`. `q.maxPixels` is therefore an absolute ceiling on pixel
+*area*, applied to the backbuffer and the internal targets alike by
+`src/render/resolution.js`, alongside the device's own `MAX_TEXTURE_SIZE` (which
+is a cliff, not a budget: one pixel over is a black screen).
+
+Two invariants, both covered by `npm run test:viewport`:
+
+- **Area, not width × height.** A 32:9 ultrawide and a 16:9 4K panel are treated
+  on the same footing; no aspect ratio is singled out for being unusual.
+- **One factor, both axes.** The aspect ratio *is* the field of view, so the
+  clamp only ever makes the frame softer, never a different shape.
+
+A lost GL context is reported as `render:contextlost` rather than handled in
+`render`: recovery means persisting a smaller budget and reloading, and
+`core/quality.js` already owns persistence and reloads. Keep that split.
+
+Anything drawn into `viewScene` is composited after the world with a cleared
+depth buffer.
+
+Per-object opt-outs, honoured every frame by `render._collect`:
+
+```js
+mesh.userData.owNoPrepass = true  // keep out of the depth/normal/velocity prepass
+mesh.userData.owNoShadow  = true  // do not cast into the CSM cascades
+```
+
+`owNoShadow` is the ONLY shadow-caster switch: the cascades draw with
+`scene.overrideMaterial` and never consult `mesh.castShadow`. `src/ai` relies on
+this for its actor LOD — both off-screen actors and, past a fraction of
+`q.shadowDistance`, distant visible ones (`src/ai/index.js` `_updateRelevance`,
+checked by `src/ai/lod.selftest.mjs`). Anything else driving it per frame must
+be hysteretic: `_collect` reads the flag every frame, so a caster toggling on a
+boundary flickers its shadow rather than merely losing it.
+
+### The point-light count is a shader permutation key
+
+`r.addLight()` puts a light under distance culling, and the cull sets
+`light.visible = false` once the fade reaches zero. Three bakes the number of
+**visible** point lights into every material's program cache key, so one lamp
+crossing its radius recompiles every lit material in the scene — measured at
++33 to +36 programs and 640-900 ms on that single frame, five times in 900
+frames. Anything that registers distance-culled point lights must keep the
+visible count constant. Two ways, both pixel-exact:
+
+- drive `intensity` to 0 and leave `visible` true (what `src/fx/lights.js` does), or
+- park zero-intensity "ballast" lights and top the count up to a fixed slot
+  budget every `lateUpdate` (what `src/world` does for its 17 practicals — see
+  `_stabiliseLightCount`, which mirrors the renderer's own fade test because the
+  cull runs *after* `lateUpdate`).
+
+A light whose colour × intensity is exactly 0 adds a float `0.0` to the
+irradiance accumulator, so extra lit slots cannot move a pixel.
+
+### Pre-warm
+
+`src/core/prewarm.js` runs before the first frame and calls
+`prewarmMaterials(ctx)` on every subsystem that implements it (`render`,
+`world`, `ai`). The contract: **build and compile every material the subsystem
+can produce, without spawning gameplay objects, drawing a gameplay frame, or
+touching the clock/RNG.** `renderer.compileAsync(scene, camera)` alone only
+reaches the forward lit variant — not the CSM depth pass, the MRT prepass, or
+the post chain. Two traps:
+
+- A render target must be bound while compiling. `outputColorSpace` and
+  `toneMapping` are part of the cache key and are read off the *currently bound*
+  target, so compiling with the canvas bound warms the wrong variant.
+- `fx` is excluded and self-warms on frame 2: its key depends on the visible
+  light count, which is only settled inside the first rendered frame.
+
+## Quality bar
+
+Every visual subsystem is reviewed by an adversarial critic against real CoD
+frames. Non-negotiables:
+
+The Auto-only `performance` tier is the cadence safety valve when Low cannot
+meet the user's FPS target. It may reduce resolution and shadow filtering, but
+must keep a valid depth/velocity prepass, registered gameplay-feedback passes,
+and at least one real sun-shadow sample. Manual Low–Ultra presets retain the
+full requirements below.
+
+- **No flat/untextured surfaces.** Every material needs albedo variation, a
+  normal map, roughness variation, and a detail layer visible at 0.5 m.
+  **Characters are the standing exception**, deliberately and by direction:
+  `src/ai/livery.js` renders them flat-shaded and untextured in one saturated
+  hue per player, and `src/ai/parts.js` builds them at a fraction of the
+  sections the anatomy was authored at. A player is identified by COLOUR and
+  SILHOUETTE at 30 m, which a camo pattern actively works against, and that
+  read is worth more than surface detail nobody resolves past 5 m. The
+  first-person arms (`src/weapons/hands.js`) took the same trade first. Do not
+  "fix" either back to textured without changing this line.
+- **No uniform lighting.** Contact shadows, bounce, ambient occlusion, and a
+  clear key/fill/rim separation.
+- **Physically plausible values.** Albedo in 0.02–0.9, metals are 0 or 1,
+  real-world light intensities, exposure-driven not multiplier-driven.
+- **Nothing perfectly straight, clean, or repeated.** Edge wear, grime in
+  crevices, subtle warp, varied instance rotation/scale.
+- **Every action has weight.** Recoil, camera shake, screen-space impulse,
+  audio transient, and a visual FX on every impact.

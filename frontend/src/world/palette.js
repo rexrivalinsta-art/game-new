@@ -1,0 +1,1022 @@
+/**
+ * WORLD — the surface palette.
+ *
+ * A named set of material variants pulled from the `materials` library. Keeping
+ * them in one table means the level uses a deliberate, limited palette (which is
+ * what makes a real map read as one place) and that every mesh sharing a key
+ * merges into the same draw call.
+ *
+ * `surface` is the ARCHITECTURE.md physics/FX tag. `tint` is a linear multiply
+ * on the baked albedo, so values stay inside 0.02–0.9 reflectance.
+ */
+export const PALETTE = {
+  // ---------------------------------------------------------- architecture --
+  plaster_cream: {
+    name: 'plaster',
+    surface: 'plaster',
+    opts: { vertexMasks: true, tint: 0xcfc0a4, scale: 2.35, weather: [0.4, 0.5, 1.4, 0.55] },
+  },
+  plaster_sand: {
+    name: 'plaster',
+    surface: 'plaster',
+    opts: { vertexMasks: true, tint: 0xb9a582, scale: 2.1, weather: [0.45, 0.5, 1.5, 0.6] },
+  },
+  plaster_blue: {
+    name: 'plaster',
+    surface: 'plaster',
+    opts: { vertexMasks: true, tint: 0x8f9aa0, scale: 2.2, weather: [0.4, 0.55, 1.5, 0.6] },
+  },
+  plaster_pink: {
+    name: 'plaster',
+    surface: 'plaster',
+    opts: { vertexMasks: true, tint: 0xc09a86, scale: 2.5, weather: [0.45, 0.5, 1.3, 0.55] },
+  },
+  plaster_white: {
+    name: 'plaster',
+    surface: 'plaster',
+    opts: { vertexMasks: true, tint: 0xd8d2c4, scale: 1.9, weather: [0.3, 0.35, 0.9, 0.5] },
+  },
+  brick: {
+    name: 'brick',
+    surface: 'concrete',
+    opts: { vertexMasks: true, tint: 0xa8846c, scale: 1.3 },
+  },
+  /** Hollow clay block exposed where the render has spalled off. */
+  brick_fine: {
+    name: 'brick',
+    surface: 'concrete',
+    opts: { vertexMasks: true, tint: 0x9c8068, scale: 0.62, weather: [0.45, 0.5, 0.8, 0.6] },
+  },
+  concrete: {
+    name: 'concrete',
+    surface: 'concrete',
+    opts: { vertexMasks: true, tint: 0xa9a49a, scale: 2.5 },
+  },
+  /**
+   * Prop-scale concrete. A 2.5 m texture tile across a 0.5 m block shows a
+   * single smear of noise and reads as untextured plastic; small objects need
+   * their own, much tighter tiling.
+   */
+  concrete_prop: {
+    name: 'concrete',
+    surface: 'concrete',
+    opts: {
+      vertexMasks: true,
+      tint: 0xa5a096,
+      scale: 0.9,
+      normalStrength: 1.3,
+      weather: [0.45, 0.5, 0.35, 0.55],
+    },
+  },
+  concrete_dark: {
+    name: 'concrete',
+    surface: 'concrete',
+    opts: { vertexMasks: true, tint: 0x7d7a73, scale: 2.2, weather: [0.4, 0.6, 1.2, 0.6] },
+  },
+  /** Roof screed: flat, sand-dusted, and the biggest surface in any skyline. */
+  roof_screed: {
+    name: 'concrete',
+    surface: 'concrete',
+    opts: { vertexMasks: true, tint: 0xb5a992, scale: 2.8, weather: [0.6, 0.2, 0.3, 0.45] },
+  },
+  floor_concrete: {
+    name: 'concrete_floor',
+    surface: 'concrete',
+    opts: { vertexMasks: true, tint: 0x9e9a91, scale: 3.0 },
+  },
+  tile_floor: {
+    name: 'tile',
+    surface: 'concrete',
+    opts: { vertexMasks: true, tint: 0xa9a08d, scale: 1.4 },
+  },
+
+  // ----------------------------------------------------------------- ground --
+  /**
+   * The street itself. A black tarmac road makes a sunlit Levantine town read
+   * as a wet European city at dusk — the actual surface is old tarmac buried
+   * under years of blown sand and dust, so the base is warm compacted earth and
+   * the asphalt only shows through where wheels have polished it.
+   */
+  road_dust: {
+    name: 'gravel',
+    surface: 'dirt',
+    opts: {
+      vertexMasks: true,
+      tint: 0xc9b896,
+      // 2.2 m, not 1.5: the aggregate reads as 25-45 mm stone instead of a
+      // 15 mm rash, and the macro relief band lands on ruts rather than on
+      // individual pebbles.
+      scale: 2.2,
+      // de-tile: a repeating cracked-earth tile down a 100 m street is the most
+      // obvious tell in any procedural level.
+      detile: 0.9,
+      // .w is cavity grime. On gravel the height field IS the aggregate, so
+      // this darkens every interstice: at 0.4 the road histogram was bimodal
+      // (mass at 32-80 and 144-176 with a hollow middle) — dither, not surface.
+      weather: [0.4, 0.04, 0.08, 0.14],
+      // No edge wear on a road. The vertex wear mask exists to rub through the
+      // arris of a prop; on a 100 m plane it just brightens every stone crown.
+      wear: [0, 0.5, 0.45, 0],
+    },
+  },
+  asphalt: {
+    name: 'asphalt',
+    surface: 'concrete',
+    opts: { vertexMasks: true, tint: 0x9d968a, scale: 3.2, detile: 0.6, wear: [0, 0.55, 0.45, 0] },
+  },
+  /**
+   * The driving line: tarmac polished bare by tyres and stained with oil. A
+   * clear stop darker than `road_dust`, because a rut the same value as the dust
+   * around it is invisible and the road goes back to being one flat plane.
+   */
+  road_rut: {
+    name: 'asphalt',
+    surface: 'concrete',
+    opts: {
+      vertexMasks: true,
+      tint: 0x6f6a62,
+      scale: 1.5,
+      detile: 0.7,
+      weather: [0.3, 0.5, 0.15, 0.28],
+      wear: [0, 0.55, 0.45, 0],
+    },
+  },
+  sand: {
+    name: 'sand',
+    surface: 'sand',
+    opts: { vertexMasks: true, scale: 2.6, detile: 0.7, wear: [0, 0.45, 0.45, 0] },
+  },
+  dirt: {
+    name: 'dirt',
+    surface: 'dirt',
+    opts: { vertexMasks: true, scale: 2.4, detile: 0.8, wear: [0, 0.5, 0.45, 0] },
+  },
+  gravel: {
+    name: 'gravel',
+    surface: 'dirt',
+    opts: { vertexMasks: true, scale: 1.8, wear: [0, 0.5, 0.45, 0] },
+  },
+  /**
+   * The refinery apron on Rust: a poured slab under years of blown grit, and
+   * the single biggest surface in that map's frame. Untinted `gravel` reads as
+   * white sand at 30 m — there is nothing to hold a value against a bright sky,
+   * and the whole yard flattens. So: a warm mid tint that sits near 0.22
+   * reflectance, cavity grime doing the tonal work, and `detile` because a 55 m
+   * apron is exactly where a repeating tile announces itself.
+   */
+  yard_slab: {
+    name: 'gravel',
+    surface: 'dirt',
+    opts: {
+      vertexMasks: true,
+      tint: 0xa8977a,
+      scale: 2.1,
+      detile: 0.85,
+      weather: [0.4, 0.06, 0.1, 0.2],
+      wear: [0, 0.5, 0.45, 0],
+    },
+  },
+  /**
+   * The contact fillet swept up against anything standing on the ground (see
+   * Assembler.put / props.dustSkirt). It has to read as the ground's own grit
+   * piled up, so it is the same generator as the road at a slightly darker,
+   * greyer tint, with the grime mask doing the work at the contact line. The
+   * first attempt used `dirt`, which is a stop lighter and carries mud cracks:
+   * every prop got a pale polygonal plate around it.
+   */
+  dust_skirt: {
+    name: 'gravel',
+    surface: 'dirt',
+    opts: {
+      vertexMasks: true,
+      tint: 0xa89d86,
+      scale: 1.1,
+      weather: [0.3, 0.0, 0.0, 0.16],
+      wear: [0, 0.9, 0.7, 0],
+    },
+  },
+
+  // ------------------------------------------------------------------ metal --
+  metal_rust: { name: 'metal_rust', surface: 'metal', opts: { vertexMasks: true, scale: 1.1 } },
+  /**
+   * Prop-scale rust. A 1.1 m tile wrapped round a 0.6 m oil drum shows one smear
+   * of noise and the drum reads as pink plastic — the same trap as
+   * `concrete_prop` / `wood_prop`. Drums and buckets are eye-level silhouette
+   * breakers in the mid-ground, so they need tiling that resolves at 3 m.
+   */
+  metal_rust_prop: {
+    name: 'metal_rust',
+    surface: 'metal',
+    opts: {
+      vertexMasks: true,
+      tint: 0x9d7c66,
+      scale: 0.4,
+      normalStrength: 1.35,
+      weather: [0.5, 0.35, 0.3, 0.5],
+    },
+  },
+  metal_blue: {
+    name: 'metal_painted',
+    surface: 'metal',
+    opts: { vertexMasks: true, tint: 0x6d8390, scale: 1.3 },
+  },
+  metal_green: {
+    name: 'metal_painted',
+    surface: 'metal',
+    opts: { vertexMasks: true, tint: 0x76806a, scale: 1.3 },
+  },
+  metal_dark: {
+    name: 'metal_painted',
+    surface: 'metal',
+    opts: { vertexMasks: true, tint: 0x4a4a48, scale: 1.0 },
+  },
+  steel: { name: 'metal_brushed', surface: 'metal', opts: { vertexMasks: true, scale: 0.9 } },
+  corrugated: { name: 'corrugated', surface: 'metal', opts: { vertexMasks: true, scale: 2.2 } },
+  /**
+   * Corrugated hoarding. Tighter than the 2.2 m roof tile above — fence sheet
+   * really is a finer profile than roof sheet — but only by a third. The first
+   * pass ran this at 0.85 and the containers at 1.25, and both came out as a
+   * comb: at 8 ribs to the tile that is a 10-15 cm pitch, against the ~28 cm a
+   * real corrugation actually has. Measure the pitch, do not eyeball the number.
+   */
+  corrugated_fine: {
+    name: 'corrugated',
+    surface: 'metal',
+    opts: { vertexMasks: true, tint: 0x9a9084, scale: 1.5, normalStrength: 1.3, weather: [0.5, 0.4, 0.35, 0.5] },
+  },
+
+  /**
+   * SHIPPING CONTAINERS — the Rust map's whole vocabulary of cover.
+   *
+   * All four are the corrugated generator under a paint tint. The tints are
+   * desaturated on purpose — a saturated primary-red box reads as a toy — but
+   * the first pass went too far the other way: measured against a sunset frame,
+   * red/blue/green all landed near 0.06 reflectance and the entire yard merged
+   * into one dark mass with no cover legible inside it. These sit around
+   * 0.18-0.28, which is where a painted steel box actually is, and which keeps
+   * three distinguishable values in a frame full of containers.
+   */
+  /**
+   * SHIPPING CONTAINER PAINT. `scale` is a tile size in metres, so BIGGER means
+   * coarser: the ribs have to land at roughly the 28 cm pitch of a real ISO
+   * corrugation, and 2.4 is what does that on this generator.
+   */
+  container_red: {
+    name: 'corrugated',
+    surface: 'metal',
+    opts: { vertexMasks: true, tint: 0xb5624a, scale: 2.4, normalStrength: 1.25, weather: [0.55, 0.45, 0.5, 0.5] },
+  },
+  container_blue: {
+    name: 'corrugated',
+    surface: 'metal',
+    opts: { vertexMasks: true, tint: 0x5c7f9c, scale: 2.4, normalStrength: 1.25, weather: [0.5, 0.45, 0.5, 0.5] },
+  },
+  container_green: {
+    name: 'corrugated',
+    surface: 'metal',
+    opts: { vertexMasks: true, tint: 0x6d8460, scale: 2.4, normalStrength: 1.25, weather: [0.5, 0.4, 0.4, 0.5] },
+  },
+  container_sand: {
+    name: 'corrugated',
+    surface: 'metal',
+    opts: { vertexMasks: true, tint: 0xb9a988, scale: 2.4, normalStrength: 1.25, weather: [0.6, 0.4, 0.45, 0.5] },
+  },
+  /**
+   * Structural steel that is PAINTED and only rusting through at the arris —
+   * the derrick legs, gantry stringers and pipe trestles. Distinct from
+   * `metal_rust`, which is bare corroded sheet: a whole 14 m tower in bare rust
+   * reads as one orange silhouette with no structure in it.
+   */
+  steel_frame: {
+    name: 'metal_painted',
+    surface: 'metal',
+    opts: { vertexMasks: true, tint: 0x7c6a58, scale: 0.75, normalStrength: 1.2, weather: [0.6, 0.4, 0.5, 0.5] },
+  },
+  /** Walkway grating and stair treads: darker, and rough enough to kill glare. */
+  steel_grate: {
+    name: 'metal_brushed',
+    surface: 'metal',
+    opts: { vertexMasks: true, tint: 0x585552, scale: 0.5, normalStrength: 1.2, weather: [0.5, 0.5, 0.5, 0.6] },
+  },
+
+  // ---------------------------------------------------------------- organic --
+  wood: { name: 'wood', surface: 'wood', opts: { vertexMasks: true, scale: 1.8 } },
+  /**
+   * Prop-scale timber. A 1.8 m grain tile across a 0.5 m crate slat shows one
+   * soft smear; crates, pallets, planks and stall tables need ~0.5 m tiling
+   * before the grain, the saw marks and the dirt in the joints read at all.
+   */
+  wood_prop: {
+    name: 'wood',
+    surface: 'wood',
+    opts: {
+      vertexMasks: true,
+      tint: 0xb08a5e,
+      scale: 0.55,
+      normalStrength: 1.45,
+      weather: [0.35, 0.3, 0.35, 0.5],
+    },
+  },
+  wood_prop_dark: {
+    name: 'wood',
+    surface: 'wood',
+    opts: {
+      vertexMasks: true,
+      tint: 0x7d6244,
+      scale: 0.5,
+      normalStrength: 1.45,
+      weather: [0.35, 0.35, 0.4, 0.55],
+    },
+  },
+  wood_dark: {
+    name: 'wood',
+    surface: 'wood',
+    opts: { vertexMasks: true, tint: 0x8a6a4a, scale: 1.5 },
+  },
+  wood_pale: {
+    name: 'wood',
+    surface: 'wood',
+    opts: { vertexMasks: true, tint: 0xc0a482, scale: 1.2 },
+  },
+  fabric_red: {
+    name: 'fabric',
+    surface: 'fabric',
+    opts: { vertexMasks: true, tint: 0xa2564a, scale: 0.26, three: { side: 2 } },
+  },
+  fabric_teal: {
+    name: 'fabric',
+    surface: 'fabric',
+    opts: { vertexMasks: true, tint: 0x5f8a8c, scale: 0.26, three: { side: 2 } },
+  },
+  fabric_cream: {
+    name: 'fabric',
+    surface: 'fabric',
+    opts: { vertexMasks: true, tint: 0xbcb298, scale: 0.26, three: { side: 2 } },
+  },
+  /**
+   * Hessian. The weave has to be fine — a 0.5 m tile turns every sandbag into a
+   * picnic basket, and sandbags are the most-repeated prop in the level.
+   *
+   * The tint is deliberately well under a bright sand value: an emplacement is
+   * dozens of square metres of one material low in the frame, and at the old
+   * value it was the brightest thing in the bottom two thirds of the night shot
+   * with nothing lighting it. Filled hessian is a mid-tone — 0.18-0.24 linear —
+   * darker than the plaster behind it and darker than the dust it sits on.
+   */
+  burlap: {
+    name: 'burlap',
+    surface: 'fabric',
+    opts: { vertexMasks: true, tint: 0xa2957a, scale: 0.16, weather: [0.5, 0.3, 0.4, 0.5] },
+  },
+  rubber: { name: 'rubber', surface: 'rubber', opts: { vertexMasks: true, scale: 0.45 } },
+  glass: { name: 'glass', surface: 'glass', opts: { scale: 2.0 } },
+  foliage: { name: 'foliage', surface: 'foliage', opts: { vertexMasks: true } },
+
+  // ------------------------------------------------- the Wilmot estate --
+  /**
+   * Mown lawn. There is no grass generator in the library, so this is the dirt
+   * field under a green multiply with the mud-crack macro tiled down — at 30 m
+   * it reads as turf, at 0.5 m as thatch, and the FBM roll in the map's height
+   * field does the rest. Surface stays `dirt` so footsteps land soft, not leafy.
+   */
+  lawn: {
+    name: 'dirt',
+    surface: 'dirt',
+    opts: {
+      vertexMasks: true,
+      tint: 0x718a4e,
+      scale: 1.7,
+      detile: 0.85,
+      weather: [0.35, 0.05, 0.1, 0.2],
+      wear: [0, 0.5, 0.4, 0],
+    },
+  },
+  /**
+   * The opaque heart of every hedge, topiary ball and tree crown. The alpha-cut
+   * `foliage` shell floats just proud of this; the core is what stops daylight
+   * showing through the middle of a clipped mass, so it sits well darker than
+   * the lit leaf surface — shadowed interior, not painted green.
+   */
+  leaf_core: {
+    name: 'dirt',
+    surface: 'foliage',
+    opts: { vertexMasks: true, tint: 0x38452c, scale: 0.7, normalStrength: 1.3, weather: [0.3, 0.2, 0.2, 0.4] },
+  },
+  bark: {
+    name: 'wood',
+    surface: 'wood',
+    opts: { vertexMasks: true, tint: 0x6d5a45, scale: 0.55, normalStrength: 1.5, weather: [0.4, 0.35, 0.4, 0.55] },
+  },
+  /** Rose beds in the sunken garden: the foliage sheet under a warm multiply. */
+  bloom: {
+    name: 'foliage',
+    surface: 'foliage',
+    opts: { vertexMasks: true, tint: 0xc08a92 },
+  },
+  /**
+   * The manor's English-revival brick, left bare: the chimney stacks above the
+   * roofline and the greenhouse plinth. Everything else on the house is
+   * `brick_lime` — see there for why the two are one wall in two finishes.
+   */
+  brick_red: {
+    name: 'brick',
+    surface: 'concrete',
+    opts: { vertexMasks: true, tint: 0x96604c, scale: 0.6, weather: [0.4, 0.45, 0.8, 0.55] },
+  },
+  /**
+   * LIMEWASHED BRICK — the house's actual finish, and the one thing a
+   * photograph of it settles instantly: the walls are white, not red.
+   *
+   * It is emphatically not plaster: it is a thin coat brushed ONTO brick, so
+   * the coursing still reads in raking light and the wash wears off the
+   * arrises first. That comes from the `brick_limewash` BAKE, not from here —
+   * `tint` is a multiply and no multiple of red brick is white. See the note
+   * on the library entry, and on BRICK's `uParam.x`, for the coat itself.
+   *
+   * What is left to do here is hold the result near white (the tint is a hair
+   * off neutral, warm, so it does not tip blue against the lawn) and let the
+   * wall weather. The rain and ground-splash terms run well above
+   * `brick_red`'s: a white wall shows its streaking and its grubby bottom
+   * metre, and a clean one would read as new paint on a 1935 house.
+   */
+  brick_lime: {
+    name: 'brick_limewash',
+    surface: 'concrete',
+    opts: {
+      vertexMasks: true,
+      tint: 0xf2ece0,
+      scale: 0.6,
+      weather: [0.45, 0.5, 0.85, 0.45],
+      wear: [0.55, 0.55, 0.35, 0],
+      wearColor: 0xa8786a,
+      grimeColor: 0x45463a,
+    },
+  },
+  /**
+   * The roof. Warm brown, coarse and thick — the house is roofed in heavy
+   * shingle-cut tile that has gone mossy, not the cool blue-grey slate the
+   * first pass assumed. `normalStrength` and the cavity-grime term do the
+   * work: the surface is visibly uneven course to course.
+   */
+  roof_tile: {
+    name: 'tile',
+    surface: 'concrete',
+    opts: { vertexMasks: true, tint: 0x5e4c3a, scale: 1.3, normalStrength: 1.5, weather: [0.5, 0.3, 0.5, 0.65] },
+  },
+  /** Interior hardwood, per the listing. Plank field at floor scale. */
+  floor_wood: {
+    name: 'plank',
+    surface: 'wood',
+    opts: { vertexMasks: true, tint: 0x8d6a48, scale: 1.2, normalStrength: 1.2 },
+  },
+  /** The restored barn's painted board siding. */
+  barn_red: {
+    name: 'plank',
+    surface: 'wood',
+    opts: { vertexMasks: true, tint: 0x86463a, scale: 1.4, normalStrength: 1.25, weather: [0.5, 0.4, 0.6, 0.55] },
+  },
+  /** Tennis-court acrylic over asphalt. */
+  court_green: {
+    name: 'asphalt',
+    surface: 'concrete',
+    opts: { vertexMasks: true, tint: 0x51705a, scale: 2.4, detile: 0.6, wear: [0, 0.5, 0.4, 0] },
+  },
+  /** Pool and fountain water: glassy, transparent, sky-fed. */
+  pool_water: {
+    name: 'glass',
+    surface: 'water',
+    opts: {
+      scale: 2.4,
+      tint: 0x5d8a8e,
+      roughness: [0.24, 0.05],
+      three: { opacity: 0.44, envMapIntensity: 1.9 },
+    },
+  },
+  /** Greenhouse glazing bars, porch columns, window trim: painted white. */
+  frame_white: {
+    name: 'metal_painted',
+    surface: 'metal',
+    opts: { vertexMasks: true, tint: 0xc9c6bc, scale: 0.9, weather: [0.45, 0.3, 0.4, 0.45] },
+  },
+  /** Cut stone for copings, sills, balustrades and steps — paler than raw concrete. */
+  stone_pale: {
+    name: 'concrete',
+    surface: 'concrete',
+    opts: { vertexMasks: true, tint: 0xb3a892, scale: 1.5, weather: [0.5, 0.35, 0.6, 0.5] },
+  },
+  /**
+   * Bluestone paving for the terrace and the garden paths. Cooler and greyer
+   * than the cut stone it used to share a key with, which matters because the
+   * two now meet along the terrace edge: warm coping over cold paving is the
+   * contrast that reads as two different stones instead of one big slab.
+   *
+   * The cavity-grime term is the highest on the map. Every joint in these
+   * paths has moss and weed in it, and grime pooling in the cavities is what
+   * puts it there without a single extra triangle.
+   */
+  flagstone: {
+    name: 'concrete',
+    surface: 'concrete',
+    opts: {
+      vertexMasks: true,
+      tint: 0x8e9490,
+      scale: 2.2,
+      normalStrength: 1.15,
+      weather: [0.4, 0.25, 0.5, 0.75],
+      grimeColor: 0x3a4030,
+    },
+  },
+  /** Baled hay: hessian run bright and dry. */
+  straw: {
+    name: 'burlap',
+    surface: 'fabric',
+    opts: { vertexMasks: true, tint: 0xc0a05e, scale: 0.3, weather: [0.4, 0.2, 0.3, 0.4] },
+  },
+
+  // ------------------------------------------------- the Chicago Loop --
+  /**
+   * Chicago common brick: darker and browner than the market's sand-blasted
+   * walls or the manor's English red — a hundred years of soot in the mortar.
+   */
+  brick_chicago: {
+    name: 'brick',
+    surface: 'concrete',
+    opts: { vertexMasks: true, tint: 0x77584a, scale: 0.62, weather: [0.45, 0.5, 0.9, 0.6] },
+  },
+  /** Grey limestone/granite for storefront bases and the bank's whole face. */
+  stone_grey: {
+    name: 'concrete',
+    surface: 'concrete',
+    opts: { vertexMasks: true, tint: 0x97938c, scale: 1.7, weather: [0.45, 0.4, 0.7, 0.5] },
+  },
+  /** Cream terracotta cladding — the Loop's theatre-and-department-store skin. */
+  terracotta: {
+    name: 'plaster',
+    surface: 'plaster',
+    opts: { vertexMasks: true, tint: 0xc4b391, scale: 1.5, weather: [0.4, 0.4, 1.1, 0.5] },
+  },
+  /**
+   * The elevated structure itself. A century of paint and grime over riveted
+   * steel — darker and colder than Rust's `steel_frame`, because the L reads
+   * as a black lattice against the sky in every photograph ever taken of it.
+   */
+  el_steel: {
+    name: 'metal_painted',
+    surface: 'metal',
+    opts: { vertexMasks: true, tint: 0x3b3831, scale: 0.8, normalStrength: 1.2, weather: [0.6, 0.45, 0.55, 0.55] },
+  },
+  /** Road paint: the dashed centreline and the transit lane. */
+  paint_yellow: {
+    name: 'plaster',
+    surface: 'concrete',
+    opts: { vertexMasks: true, tint: 0xa8862e, scale: 0.8, weather: [0.5, 0.3, 0.3, 0.4] },
+  },
+  /** Painted signage red: the blade sign, hydrants, the news boxes. */
+  sign_red: {
+    name: 'metal_painted',
+    surface: 'metal',
+    opts: { vertexMasks: true, tint: 0x8c3b32, scale: 0.9, weather: [0.5, 0.4, 0.5, 0.5] },
+  },
+
+  // ------------------------------------------------- the Fisher's estate --
+  /**
+   * The house's roof and every outbuilding's with it. Wilmot's `roof_tile` is
+   * warm brown shingle-cut tile gone mossy; this place is roofed in cold grey
+   * slate, and from the air that is the first thing that separates the two
+   * estates. Same `tile` bake — the coursing is what makes a roof read as a
+   * roof — under a blue-grey multiply, with the rain and cavity terms up,
+   * because slate greys and streaks rather than growing moss.
+   */
+  roof_slate: {
+    name: 'tile',
+    surface: 'concrete',
+    opts: { vertexMasks: true, tint: 0x555a60, scale: 1.25, normalStrength: 1.4, weather: [0.5, 0.45, 0.7, 0.55] },
+  },
+  /**
+   * Spruce. Deliberately its own key rather than a reuse of `leaf_core`: the
+   * evergreen rows are the estate's architecture — they screen the pool axis,
+   * the court and the whole boundary — and they have to sit DARKER and colder
+   * than the broadleaf crowns and the lawn or the map turns into one green
+   * mass. Opaque, with no alpha shell over it; see `fisherprops.js` for why.
+   */
+  conifer: {
+    name: 'dirt',
+    surface: 'foliage',
+    opts: { vertexMasks: true, tint: 0x2c3b31, scale: 0.85, normalStrength: 1.4, weather: [0.3, 0.2, 0.2, 0.45] },
+  },
+  /**
+   * THE POOL'S SHELL, and the reason the pool is turquoise.
+   *
+   * `pool_water` is a 44%-opaque glass with a light blue-green tint, so what a
+   * player actually sees in a pool is the SHELL through it, tinted. Over
+   * `tile_floor` — a warm bathroom grey — a 24 m basin comes out olive in
+   * daylight and near-black in the terrace's shadow, which is exactly what the
+   * first pass looked like and nothing like the photograph. Pale blue tile
+   * under the same water reads turquoise in sun and still reads blue in shade,
+   * and costs one material: the `tile` bake is already resident for the roofs.
+   */
+  pool_tile: {
+    name: 'tile',
+    surface: 'concrete',
+    opts: { vertexMasks: true, tint: 0x93c4d2, scale: 1.05, weather: [0.3, 0.2, 0.35, 0.4] },
+  },
+  /**
+   * The pool terrace. Cast concrete run almost white and a shade cool, against
+   * the warm `stone_pale` of the house's sills, copings and the garden wall —
+   * the two meet along the terrace edge, and that contrast is what stops 15 x
+   * 40 m of paving reading as one enormous slab of the same stone the house
+   * is trimmed in.
+   */
+  deck_pale: {
+    name: 'concrete',
+    surface: 'concrete',
+    opts: { vertexMasks: true, tint: 0xcdc9be, scale: 1.6, weather: [0.45, 0.3, 0.55, 0.5] },
+  },
+  /** The tennis court's run-off apron: the same acrylic, laid oxide red. */
+  court_clay: {
+    name: 'asphalt',
+    surface: 'concrete',
+    opts: { vertexMasks: true, tint: 0x7c4038, scale: 2.4, detile: 0.6, wear: [0, 0.5, 0.4, 0] },
+  },
+
+  // ------------------------------------------------------------- apertures --
+  /**
+   * The dark core BEHIND a window opening. A window is not a grey rectangle: it
+   * is a hole with a dark room behind it, and the only thing that sells it is a
+   * genuinely dark backing plane set 15-25 cm back from the glass so the reveal
+   * casts onto it and the opening parallaxes as the camera moves. Final linear
+   * albedo lands around 0.03 (the tint is a linear multiply on the baked
+   * plaster albedo), which is the reflectance of an unlit room seen from a
+   * sunlit street — dark, but still carrying plaster texture rather than being
+   * a black hole.
+   */
+  window_void: {
+    name: 'plaster',
+    surface: 'plaster',
+    opts: {
+      vertexMasks: true,
+      tint: 0x474441,
+      scale: 1.1,
+      roughness: [1.0, 0.15],
+      weather: [0.2, 0.7, 0.2, 0.7],
+    },
+  },
+  /**
+   * The dark shell inside a non-enterable building. Seen through doorways and
+   * blown-out holes as well as windows, so it sits a stop above `window_void`:
+   * dark, readable, never a white blank.
+   */
+  interior_shell: {
+    name: 'plaster',
+    surface: 'plaster',
+    opts: {
+      vertexMasks: true,
+      tint: 0x5f5b56,
+      scale: 1.6,
+      roughness: [1.0, 0.1],
+      weather: [0.25, 0.8, 0.3, 0.65],
+    },
+  },
+  /**
+   * Window glass. Distinct from the `glass` used on bottles and shards purely
+   * so the roughness can be forced down: below 0.62 the render's SSR/IBL path
+   * kicks in and the pane picks up the sky, which is what stops a window
+   * reading as taped-over paper.
+   */
+  window_glass: {
+    name: 'glass',
+    surface: 'glass',
+    opts: {
+      scale: 2.0,
+      roughness: [0.3, 0.06],
+      three: { opacity: 0.16, envMapIntensity: 2.1 },
+    },
+  },
+  /** Plywood sheet nailed over a broken window. */
+  plywood: {
+    name: 'wood',
+    surface: 'wood',
+    opts: {
+      vertexMasks: true,
+      tint: 0x7a6549,
+      scale: 0.62,
+      normalStrength: 1.2,
+      weather: [0.5, 0.45, 0.5, 0.6],
+    },
+  },
+
+  // ---------------------------------------------------------------- emissive --
+  /** Bare interior bulb. Tiny surface, so it needs real radiance to read. */
+  emissive_warm: {
+    name: 'plaster',
+    surface: 'glass',
+    opts: {
+      scale: 0.4,
+      tint: 0xfff0d8,
+      three: { emissive: 0xffd39a, emissiveIntensity: 12, toneMapped: true },
+    },
+  },
+  /**
+   * A lit room seen from the street. Much dimmer than `emissive_warm`: this is a
+   * whole wall of a room catching a bulb, not the bulb itself, and at daylight
+   * exposure it only has to lift the opening off the dark-core value.
+   */
+  window_glow: {
+    name: 'plaster',
+    surface: 'plaster',
+    opts: {
+      vertexMasks: true,
+      tint: 0x6a5a45,
+      scale: 1.2,
+      three: { emissive: 0xffb066, emissiveIntensity: 1.1, toneMapped: true },
+    },
+  },
+  /**
+   * A lit sign face: a marquee letterboard, a blade sign, a diner's name over
+   * the door. It sits between the two above on purpose — `window_glow` is a
+   * whole room catching one bulb and reads as a value, not as a light, while
+   * `emissive_warm` is the bulb itself and blows out anything larger than a
+   * few centimetres. A sign board is neither: a painted panel with a bank of
+   * lamps a hand's width behind it, bright enough to be the brightest thing on
+   * a night street and still hold its lettering instead of clipping to white.
+   */
+  sign_glow: {
+    name: 'plaster',
+    surface: 'plaster',
+    opts: {
+      scale: 0.9,
+      tint: 0xf7e6c8,
+      three: { emissive: 0xffd9a0, emissiveIntensity: 3.4, toneMapped: true },
+    },
+  },
+  /** Street-lamp diffuser. Emission is driven by time of day at runtime. */
+  lamp_lens: {
+    name: 'glass',
+    surface: 'glass',
+    opts: {
+      scale: 1.0,
+      three: { emissive: 0xffc47a, emissiveIntensity: 0, opacity: 0.5 },
+    },
+  },
+
+  /* ───────────────────────────────────────────────────────── the blockout ── */
+  /**
+   * `gb_*` — the greybox family, used by Nuketown and nothing else.
+   *
+   * These exist as SEPARATE KEYS rather than as edits to `plaster_cream`,
+   * `concrete` and friends because those are shared with Wilmot, Rust, Market
+   * and the Loop; changing one in place restyles four maps nobody asked to
+   * restyle. A new key cannot leak — it is only a look if something references
+   * it.
+   *
+   * Four of the five reuse a resident bake and cost NO texture memory: `tint`
+   * is a linear multiply on an already-baked albedo, so a family of flat
+   * colours is free. Only `gb_grid` names its own surface, and that bake is
+   * 512 (see `library.js`). Do not add `bake:` to any of the others.
+   *
+   * FLATNESS IS THE WHOLE LOOK, and it is entirely configuration — every key
+   * below shares `FLAT`, and none of it needed a shader change. `weather` all
+   * zeroes drops the `OW_WEATHER` block from the compile outright, and
+   * `vertexMasks: false` compiles out the wear/grime/AO block regardless of the
+   * masks the geometry supplies. What is left is the colour and the light.
+   *
+   * Tints stay inside the 0.02-0.9 reflectance band this file opens with, which
+   * is why "white" here is 0xd9d6d1 and not 0xffffff: a pure-white albedo is
+   * not a material, it is a blown highlight with a mesh behind it.
+   */
+  ...(() => {
+    const FLAT = {
+      vertexMasks: false,
+      weather: [0, 0, 0, 0],
+      macro: [0.05, 0, 0, 0],
+      macroBig: [1, 0, 0, 0],
+      patch: [0, 0, 0, 0],
+      detail: [8, 0, 0, 0],
+      parallax: 0,
+      detile: 0,
+      normalStrength: 0,
+      aoStrength: 0,
+      roughness: [0, 0.85, 0.85],
+    };
+    return {
+      /** Every large mass: both houses, the sheds, the porch. */
+      gb_white: { name: 'flat_matte', surface: 'plaster', opts: { ...FLAT, tint: 0xeeebe6 } },
+      /** The perimeter wall, the roofs, the ground outside, the backdrop. */
+      gb_grey: { name: 'flat_matte', surface: 'concrete', opts: { ...FLAT, tint: 0x9a9ca0 } },
+      /** The deck: apron, street, kerbs and every low block. */
+      gb_grid: { name: 'grid', surface: 'concrete', opts: { ...FLAT, scale: 4.0 } },
+      /**
+       * The single accent. Storage Orange from DESIGN.md's world palette — one
+       * dominant environmental accent per map is the rule, so this is the only
+       * saturated colour on Nuketown and it belongs to the barrels and the sign.
+       */
+      gb_accent: { name: 'flat_matte', surface: 'metal', opts: { ...FLAT, tint: 0xc46d2e } },
+      /** Crate bracing and doors — the dark value that keeps the whites apart. */
+      gb_dark: { name: 'flat_matte', surface: 'wood', opts: { ...FLAT, tint: 0x44484e } },
+    };
+  })(),
+
+  /* ────────────────────────────────────────────────────────────── the gulch ── */
+  /**
+   * `bg_*` — Blood Gulch's canyon family, and the same bargain as `gb_*` above:
+   * every key is `flat_matte` differing only by `tint`, so the whole map costs
+   * ONE resident 256 bake and no texture memory of its own. That is the map's
+   * brief — performance over realism — expressed in the material layer, where
+   * it is far cheaper than in the geometry.
+   *
+   * The `FLAT` block is repeated rather than shared with the greybox family
+   * above ON PURPOSE. `gb_*` opens by saying a family cannot leak because it is
+   * only a look if something references it; hoisting one shared constant would
+   * make every future edit to Nuketown's flatness an edit to this map's, which
+   * is exactly the coupling those keys exist to avoid.
+   *
+   * Tints stay inside the 0.02-0.9 reflectance band this file opens with —
+   * `maps.selftest.mjs` asserts it for both families.
+   */
+  ...(() => {
+    const FLAT = {
+      vertexMasks: false,
+      weather: [0, 0, 0, 0],
+      macro: [0.05, 0, 0, 0],
+      macroBig: [1, 0, 0, 0],
+      patch: [0, 0, 0, 0],
+      detail: [8, 0, 0, 0],
+      parallax: 0,
+      detile: 0,
+      normalStrength: 0,
+      aoStrength: 0,
+      roughness: [0, 0.88, 0.88],
+    };
+    return {
+      /** The valley floor. Dry summer grass, not lawn green. */
+      bg_grass: { name: 'flat_matte', surface: 'dirt', opts: { ...FLAT, tint: 0x74914e } },
+      /** Every cliff, buttress, ridge and boulder: the canyon's sandstone. */
+      bg_rock: { name: 'flat_matte', surface: 'concrete', opts: { ...FLAT, tint: 0xa4886a } },
+      /** The shaded value of the same stone — scatter, plinths, rock shadow. */
+      bg_rock_dark: { name: 'flat_matte', surface: 'concrete', opts: { ...FLAT, tint: 0x7b6552 } },
+      /**
+       * The spire, and only the spire — sun-bleached stone, a clear value above
+       * every other rock on the map.
+       *
+       * This is albedo doing a job lighting cannot. The landmark has to be
+       * picked out against the canyon wall from BOTH ends of a map whose ends
+       * face opposite ways, so whichever way the sun is turned, one of those
+       * views is backlit and the spire's visible faces and the wall behind them
+       * are lit by the same sky. A material two stops lighter survives that;
+       * a sun angle does not.
+       */
+      bg_spire: { name: 'flat_matte', surface: 'concrete', opts: { ...FLAT, tint: 0xd6c4a4 } },
+      /** Both bases: walls, roofs, ramps, parapets. */
+      bg_conc: { name: 'flat_matte', surface: 'concrete', opts: { ...FLAT, tint: 0xa8adb0 } },
+      /**
+       * The two team accents. DESIGN.md's one-accent-per-map rule is bent here
+       * and only here: on this map "which end am I looking at" IS the red/blue
+       * split, so the colours are the navigation. They are confined to the
+       * bases' trim bands and flag stands — nothing in the landscape carries
+       * either of them, which is what keeps the pair legible at 90 m.
+       */
+      bg_red: { name: 'flat_matte', surface: 'concrete', opts: { ...FLAT, tint: 0xa8443c } },
+      bg_blue: { name: 'flat_matte', surface: 'concrete', opts: { ...FLAT, tint: 0x3c6ba8 } },
+      /** Door reveals and the underside of the roof ring — the shadow value. */
+      bg_dark: { name: 'flat_matte', surface: 'metal', opts: { ...FLAT, tint: 0x4b5054 } },
+    };
+  })(),
+  /* ─────────────────────────────────────────────────────────────── the site ── */
+  /**
+   * `sw_*` — Site Work's blockout family, and the same bargain as `gb_*` and
+   * `bg_*` above: every key is `flat_matte` differing only by `tint`, so the
+   * whole map costs ONE resident 256 bake and no texture memory of its own.
+   *
+   * FLATNESS IS THE WHOLE LOOK and it is entirely configuration. `weather` all
+   * zeroes drops the `OW_WEATHER` block from the compile outright, and
+   * `vertexMasks: false` compiles out the wear/grime/AO block regardless of the
+   * masks `PB` writes into the geometry. What is left is the colour and the
+   * light — which is exactly what an arena shooter's art direction is.
+   *
+   * The `FLAT` block is repeated rather than shared with the two families above
+   * ON PURPOSE, for the reason `bg_*` gives: hoisting one shared constant would
+   * make every future edit to one map's flatness an edit to all three, which is
+   * the coupling separate keys exist to avoid.
+   *
+   * TWO ORANGES, NOT ONE. Site Work is an orange map — the hoarding, the frame
+   * and the core are all the same paint in life — and a single tint made the
+   * frame vanish into the hoarding behind it from half the map. `sw_orange` is
+   * the bright environmental accent (hoarding, columns, the core mast) and
+   * `sw_amber` the deeper structural value (the frame, the core shaft), so a
+   * mass always has something a value apart to read against.
+   *
+   * Tints stay inside the 0.02-0.9 reflectance band this file opens with, and
+   * the BLUE channel is the one with no headroom: safety orange wants it near
+   * zero and the floor puts the minimum at 0x2b. Two passes at this palette
+   * were under it — a black point no real paint has, which crushes to pure
+   * black in shadow and is invisible in a lit frame. `maps.selftest.mjs`
+   * asserts the band for the whole family rather than trusting the eye.
+   */
+  ...(() => {
+    const FLAT = {
+      vertexMasks: false,
+      weather: [0, 0, 0, 0],
+      macro: [0.05, 0, 0, 0],
+      macroBig: [1, 0, 0, 0],
+      patch: [0, 0, 0, 0],
+      detail: [8, 0, 0, 0],
+      parallax: 0,
+      detile: 0,
+      normalStrength: 0,
+      aoStrength: 0,
+      roughness: [0, 0.85, 0.85],
+    };
+    return {
+      /**
+       * The site floor. As dark as this file's 0.02 reflectance floor allows —
+       * the shader receives it as 0.027 linear, measured off `owTintCol`.
+       *
+       * It still reads as a mid grey on screen and that is correct, not a bug:
+       * a 2.4% albedo under an open sky tonemaps to about that, the same way
+       * fresh asphalt photographs mid-grey in sunlight. Do not chase a darker
+       * floor with a lower tint — below 0x2b it is out of band, and the thing
+       * actually setting the on-screen value is the sky, not the albedo.
+       *
+       * `roughness` is the one place this key departs from `FLAT`: the array is
+       * (scale, offset, detile), so 0.3 in the offset slot with a zero scale
+       * pins the whole surface at 0.3 — a wet yard rather than a dry one. That
+       * is what gives the neon and the barrels a long smeared reflection down
+       * the ground instead of dying at the fitting, and on a night map the
+       * reflections are most of the light you can actually see by.
+       */
+      sw_ground: { name: 'flat_matte', surface: 'concrete', opts: { ...FLAT, roughness: [0, 0.3, 0.85], tint: 0x2e3134 } },
+      /** The hoarding, the frame columns, the core mast — the bright accent. */
+      sw_orange: { name: 'flat_matte', surface: 'metal', opts: { ...FLAT, tint: 0xd98a38 } },
+      /** The deeper structural orange: the frame walls and both core shafts. */
+      sw_amber: { name: 'flat_matte', surface: 'concrete', opts: { ...FLAT, tint: 0xc06a34 } },
+      /** Timber: crates, pallets, plank stacks. */
+      sw_tan: { name: 'flat_matte', surface: 'wood', opts: { ...FLAT, tint: 0xdcc48f } },
+      /** Brick pallets, and the barrels that are not blue. */
+      sw_red: { name: 'flat_matte', surface: 'concrete', opts: { ...FLAT, tint: 0xc4534a } },
+      /**
+       * Light concrete, for SMALL objects only: barriers, cover blocks, the
+       * backdrop's slab edges.
+       */
+      sw_grey: { name: 'flat_matte', surface: 'concrete', opts: { ...FLAT, tint: 0x8f9398 } },
+      /**
+       * Mid concrete, for the BIG poured surfaces: the frame deck, the core
+       * deck, the stairs, the two end sheds.
+       *
+       * Splitting this off `sw_grey` is not a nicety. The frame deck is 34 x 14
+       * m — the largest single surface on the map — and at the barriers' value
+       * it read as a white table top that pulled the eye off everything else.
+       * A barrier is bright because it is small; a deck at the same value is
+       * just the brightest thing in the frame.
+       *
+       * BOTH GREYS WERE DROPPED A STOP when the map went to night. Concrete
+       * that reads correctly under a midday sun is the brightest thing in a
+       * frame lit by six lamps, and the barriers were competing with the neon
+       * they are meant to sit under.
+       */
+      sw_concrete: { name: 'flat_matte', surface: 'concrete', opts: { ...FLAT, tint: 0x6b7075 } },
+      /** The dark value that keeps the oranges and the tans apart. */
+      sw_dark: { name: 'flat_matte', surface: 'metal', opts: { ...FLAT, tint: 0x4a4e54 } },
+      /** The one cool note: half the cabins, some barrels, the shed glazing. */
+      sw_blue: { name: 'flat_matte', surface: 'metal', opts: { ...FLAT, tint: 0x4a7ba8 } },
+
+      /*
+       * ── the night fittings ────────────────────────────────────────────────
+       *
+       * Site Work is set at ten at night, so these three are not decoration —
+       * they are most of what the map is lit by, and every one of them is
+       * EMISSIVE ONLY. No punctual light, no shader permutation, following the
+       * Loop's shopfronts and blade sign for the reason `world/index.js` spells
+       * out at length: three bakes the number of VISIBLE point lights into the
+       * program cache key, so a map that scatters practicals recompiles every
+       * lit material in the frame as you walk past them. Emissive geometry
+       * costs a draw call and nothing else.
+       *
+       * The actual illumination comes from six lamp anchors, which the world
+       * ramps on solar altitude and which the light ballast already counts.
+       */
+      /** The green edge strip: hoarding capping, cabin lines, deck edges. */
+      sw_neon: {
+        name: 'flat_matte',
+        surface: 'glass',
+        opts: { ...FLAT, tint: 0x8ef0a8, three: { emissive: 0x35ff70, emissiveIntensity: 9, toneMapped: true } },
+      },
+      /** The hazard barrels' bands, and the heads of the six lamp masts. */
+      sw_glow: {
+        name: 'flat_matte',
+        surface: 'glass',
+        opts: { ...FLAT, tint: 0xf0b060, three: { emissive: 0xff8a2a, emissiveIntensity: 6, toneMapped: true } },
+      },
+      /** Somebody is still working in the blocks going up past the hoarding.
+       * The tint is DARK on purpose: these are on the mains circuit, and when
+       * the grid goes down the emissive drops to 6% — a pale albedo kept the
+       * quads reading as lit rectangles off skylight alone, so the powered
+       * look is carried entirely by the emissive. */
+      sw_window: {
+        name: 'flat_matte',
+        surface: 'glass',
+        opts: { ...FLAT, tint: 0x3a3d44, three: { emissive: 0xffd9a0, emissiveIntensity: 3.2, toneMapped: true } },
+      },
+    };
+  })(),
+
+};

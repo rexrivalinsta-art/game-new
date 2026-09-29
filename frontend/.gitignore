@@ -1,0 +1,66 @@
+node_modules/
+
+# Build output
+dist/
+playable-snapshot/
+perf-candidate/
+perf-cand2/
+
+# Capture output — 780 MB of PNGs. Regenerate with tools/baseline.mjs.
+shots/
+
+# Raw SFX source packs — 338 MB of 96 kHz masters. Not needed to build or run;
+# `public/sfx/` is the committed output. Re-fetch with tools/fetch-sfx.sh.
+# (`assets-src/*`, not `assets-src/`: git will not look inside an excluded
+# directory, so the re-include below would never be reached.)
+assets-src/*
+# ...except the announcer lines: ours, tiny, and not fetchable from anywhere.
+!assets-src/vox/
+# ...and the reload foley and the firing takes, for the same reason: generated,
+# not downloaded, so there is no fetch-sfx.sh step that could bring them back.
+!assets-src/reload/
+!assets-src/shot/
+# ...and the ElevenLabs-generated masters (prompts recorded beside them).
+!assets-src/eleven/
+
+# Goal scorecard output — measurements and their PNGs. Regenerate with
+# `node tools/goal.mjs`; the criteria themselves live in tools/lib/criteria.mjs.
+.goal/
+
+# Goal scorecard output — measurements and their PNGs. Regenerate with
+# `node tools/goal.mjs`; the criteria themselves live in tools/lib/criteria.mjs.
+.goal/
+
+# Agent scratch
+demo/
+.tmp-demo/
+.tmp-rend/
+revcrops/
+
+# Cloudflare Wrangler local state
+.wrangler/
+.dev.vars
+
+.DS_Store
+
+scratch/
+
+.env
+.env.*
+!.env.example
+
+# Personal Claude Code state — local commands, skills and scratch settings.
+# (`.claude/*`, not `.claude/`: git will not look inside an excluded directory,
+# so the re-includes below would never be reached.)
+.claude/*
+# ...except the session bootstrap. A cloud session clones the repo fresh with no
+# node_modules, so these two have to be tracked or every session starts broken.
+!.claude/settings.json
+!.claude/hooks/
+
+!.claude/skills/
+
+# Local design-iteration screenshots (chrome-devtools)
+.shots/
+
+.dev-server.log
