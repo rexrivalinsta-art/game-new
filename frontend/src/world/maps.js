@@ -82,71 +82,71 @@ const REGISTRY = [
     map: WILMOT_MAP,
     order: 10,
     enabled: true,
-    name: 'Wilmot',
-    description: 'Bannockburn estate grounds',
+    name: 'Ironhold',
+    description: 'Fortified hillside estate grounds',
   },
   {
     map: FISHERS_MAP,
     order: 20,
     enabled: true,
-    name: "The Fisher's",
-    description: 'North Shore estate, down the pool axis',
+    name: 'Highwater',
+    description: 'Waterfront villa along the pool axis',
   },
   {
     map: RUST_MAP,
     order: 30,
     enabled: true,
-    name: 'Rust',
-    description: 'Desert oil refinery',
+    name: 'Cinder',
+    description: 'Abandoned desert oil refinery',
   },
   {
     map: NUKETOWN_MAP,
     order: 35,
     enabled: true,
-    name: 'Nuketown',
-    description: 'Two houses across a test-site street',
+    name: 'Fallback',
+    description: 'Twin houses across a test-range street',
   },
   {
     map: BLOODGULCH_MAP,
     order: 37,
     enabled: true,
-    name: 'Blood Gulch',
-    description: 'Box canyon, a base at each end',
+    name: 'Deadfall',
+    description: 'Box canyon with a base at each end',
   },
   {
     map: DOME_MAP,
     order: 38,
     enabled: true,
-    name: 'Dome',
-    description: 'Radar station under a broken radome',
+    name: 'Eclipse',
+    description: 'Radar station under a shattered dome',
   },
   {
     map: SHIVAM_MAP,
     order: 39,
     enabled: true,
-    name: 'Shivam',
-    description: 'Bondi Beach front, Sydney',
+    name: 'Breakwater',
+    description: 'Sunlit beachfront promenade',
   },
   {
     map: SITEWORK_MAP,
     order: 39.5,
     enabled: true,
-    name: 'Site Work',
-    description: 'Neon-lit construction site, after dark',
+    name: 'Livewire',
+    description: 'Neon-lit construction site after dark',
   },
   {
     map: MARKET_MAP,
     order: 40,
     enabled: false,
-    name: 'Market',
-    description: 'Middle-Eastern market street',
+    name: 'Verge',
+    description: 'Crowded old market street',
   },
   {
     map: LOOP_MAP,
     order: 50,
     enabled: false,
-    name: 'The Loop',
-    description: 'Chicago corner under the L, after dark',
+    name: 'Sidetrack',
+    description: 'City corner beneath elevated rails, after dark',
   },
 ];
 
@@ -190,7 +190,7 @@ export function mapRegistry() {
  * market was parked; every baseline shot before that framed the market and is
  * not comparable to one shot now.
  */
-export const DEFAULT_MAP_ID = 'wilmot';
+export const DEFAULT_MAP_ID = 'ironhold';
 
 /** Where the chosen map is remembered between sessions. */
 const STORAGE_KEY = 'workmelt.map';

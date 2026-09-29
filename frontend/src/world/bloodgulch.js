@@ -868,7 +868,7 @@ export function buildBloodGulch(A, rng) {
 /* ─────────────────────────────────────────────────────────────────────────── */
 
 export const BLOODGULCH_MAP = {
-  id: 'bloodgulch',
+  id: 'deadfall',
   blurb: 'A box canyon with a base at each end. Two ramps to every roof, one rock spire in the middle, and nowhere on the field more than a sprint from cover.',
   size: '104 × 72 m',
   /**

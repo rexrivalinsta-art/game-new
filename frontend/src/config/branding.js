@@ -23,8 +23,9 @@ export const BRAND = {
   TWITTER: 'https://x.com/your-handle',
   UPDATES: 'https://example.com/updates',
 
-  // Attribution (kept for the in-game Credits screen).
-  BASED_ON: 'Built on the open-source Workmelt / Claude of Duty engine (MIT).',
+  // Studio / legal.
+  STUDIO: 'NEURAL STRIKE',
+  COPYRIGHT: '© 2026 NEURAL STRIKE. All rights reserved.',
 };
 
 export default BRAND;

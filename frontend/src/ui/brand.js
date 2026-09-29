@@ -92,7 +92,7 @@ const CSS = `
   /* Channel forms of the colours that ever appear at partial alpha. A surface
      scrim over the live scene needs the palette AND an opacity, and rgba()
      cannot take a hex custom property — so the channels are the token and
-     rgb(var(--x) / a) is how every translucent WORKMELT surface is built. */
+     rgb(var(--x) / a) is how every translucent NEURAL STRIKE surface is built. */
   --wm-bg-rgb: 0 0 0;
   --wm-surface-rgb: 10 12 17;
   --wm-void-rgb: 5 6 10;

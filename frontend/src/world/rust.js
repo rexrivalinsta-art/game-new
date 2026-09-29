@@ -1299,7 +1299,7 @@ export function buildRust(A, rng) {
 /* ─────────────────────────────────────────────────────────────────────────── */
 
 export const RUST_MAP = {
-  id: 'rust',
+  id: 'cinder',
   blurb: 'Tight, symmetrical, vertical. Containers for cover, a 13 m derrick in the middle, and nowhere to hide from it.',
   size: '55 × 55 m',
   /**

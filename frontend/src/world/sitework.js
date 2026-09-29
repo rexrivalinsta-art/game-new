@@ -1146,7 +1146,7 @@ export function buildSitework(A, rng) {
 /* ─────────────────────────────────────────────────────────────────────────── */
 
 export const SITEWORK_MAP = {
-  id: 'sitework',
+  id: 'livewire',
   blurb: 'Ten at night on a live site: neon down the hoarding, hazard drums burning in the dark, and a lift core watching every lane. Three ways past the middle and none of them quiet.',
   size: '56 × 84 m',
   /**

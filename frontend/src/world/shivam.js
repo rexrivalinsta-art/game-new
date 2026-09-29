@@ -1162,7 +1162,7 @@ export function buildShivam(A, rng) {
 /* ─────────────────────────────────────────────────────────────────────────── */
 
 export const SHIVAM_MAP = {
-  id: 'shivam',
+  id: 'breakwater',
   blurb: 'Terraces down to the sand. Hold the Pavilion roof, vault the sea wall, or swim for the Icebergs.',
   size: '84 × 62 m',
   /**

@@ -30,7 +30,7 @@ import { SPAWN_POINTS, standableAt } from './spawns.js';
  * See `maps.js` for what a map descriptor has to provide.
  */
 export const MARKET_MAP = {
-  id: 'market',
+  id: 'verge',
   blurb:
     'One long street, two flanking alleys and an arched gate. Fought at every range, with interiors and rooftops on both sides.',
   size: '120 × 120 m',

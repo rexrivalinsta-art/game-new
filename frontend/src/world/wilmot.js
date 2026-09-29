@@ -1302,7 +1302,7 @@ export function buildWilmot(A, rng) {
 /* ─────────────────────────────────────────────────────────────────────────── */
 
 export const WILMOT_MAP = {
-  id: 'wilmot',
+  id: 'ironhold',
   blurb:
     'A whitewashed manor over its own lawn: pool terrace, hedge lanes and a sunken garden below the sightlines, with a hay loft and the house windows above them.',
   size: '62 × 58 m',

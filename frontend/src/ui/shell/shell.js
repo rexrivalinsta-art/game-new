@@ -604,19 +604,21 @@ export class ShellMenu {
   _renderCredits() {
     const el = this.root.querySelector('[data-panel="credits"]');
     el.innerHTML = `
-      <div class="ns-eyebrow">Legal</div>
-      <h1 class="ns-h1">Credits & Licenses</h1>
+      <div class="ns-eyebrow">About</div>
+      <h1 class="ns-h1">Credits</h1>
       <div class="ns-prose" data-testid="credits-body">
-        <p><b>${esc(BRAND.GAME_NAME)}</b> — ${esc(BRAND.BASED_ON)}</p>
-        <h4>Engine & Code</h4>
-        <p>Built on the open-source <a href="https://github.com/eriknomitch/workmelt" target="_blank" rel="noopener">Workmelt</a> project (forked from <a href="https://github.com/mshumer/Claude-of-Duty" target="_blank" rel="noopener">Claude of Duty</a>), released under the <b>MIT License</b>. The MIT license and copyright notice are preserved in the repository <code>LICENSE</code> file.</p>
-        <h4>Three.js</h4>
-        <p>Rendering powered by <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> (MIT License).</p>
-        <h4>Audio</h4>
-        <p>Weapon, footstep, impact and UI sounds combine CC0 and CC-BY samples layered over procedural Web Audio synthesis. The footstep pack is <b>CC BY 3.0</b> — attribution retained in <code>public/sfx/CREDITS.md</code>.</p>
-        <h4>3D Model</h4>
-        <p>The G31 sidearm shell is baked from “Low-Poly G31 Competition” by Kaan (<b>CC BY 4.0</b>). Attribution retained in <code>public/models/CREDITS.md</code>.</p>
-        <p style="margin-top:18px;color:rgba(233,237,242,.45)">We do not claim authorship of the third-party open-source components above; all required notices are preserved.</p>
+        <p><b>${esc(BRAND.GAME_NAME)}</b> — designed, built and operated by ${esc(BRAND.STUDIO)}.</p>
+        <p>${esc(BRAND.COPYRIGHT)}</p>
+        <h4>Development</h4>
+        <p>Engine, netcode, gameplay, art direction and interface — ${esc(BRAND.STUDIO)}.</p>
+        <h4>Technology</h4>
+        <p>Real-time 3D rendered in the browser with WebGL. Multiplayer runs on our own
+        WebSocket relay backend. Built with open-source technologies under permissive licenses.</p>
+        <h4>Licensed audio &amp; assets</h4>
+        <p>A portion of the sound design uses samples licensed under Creative Commons
+        (CC BY) and is used with attribution retained in the project files. All other
+        art, geometry and audio are original to ${esc(BRAND.STUDIO)}.</p>
+        <p style="margin-top:18px;color:rgba(233,237,242,.4)">v${esc(BRAND.VERSION)} · ${esc(BRAND.COPYRIGHT)}</p>
       </div>
     `;
   }

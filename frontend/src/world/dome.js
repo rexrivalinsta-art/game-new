@@ -996,7 +996,7 @@ export function buildDome(A, rng) {
 /* ─────────────────────────────────────────────────────────────────────────── */
 
 export const DOME_MAP = {
-  id: 'dome',
+  id: 'eclipse',
   blurb: 'A broken radome over a desert outpost. The catwalk ring sees the whole yard — the bunker is the only place it cannot reach.',
   size: '68 × 52 m',
   /**

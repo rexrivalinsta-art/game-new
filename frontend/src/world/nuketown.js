@@ -823,7 +823,7 @@ export function buildNuketown(A, rng) {
 /* ─────────────────────────────────────────────────────────────────────────── */
 
 export const NUKETOWN_MAP = {
-  id: 'nuketown',
+  id: 'fallback',
   blurb: 'Two houses, one street, thirty seconds between spawns. Upstairs windows watch everything, and everything watches back.',
   size: '51 × 42 m',
   /**
